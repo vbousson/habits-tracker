@@ -3,7 +3,7 @@ import { answersFor as answersForDate } from '../core/repository'
 import { todayISO } from '../core/date'
 import type { Answers } from '../core/form'
 import type { HabitRepository } from '../core/repository'
-import type { Entry, ISODate, Metric, MetricValue, Note, Snapshot, TrackedEvent } from '../core/types'
+import type { Entry, Goal, ISODate, Metric, MetricValue, Note, Snapshot, TrackedEvent } from '../core/types'
 
 export type TrackerStatus = 'loading' | 'ready' | 'error'
 
@@ -24,6 +24,14 @@ export interface TrackerApi {
   saveEvent: (event: TrackedEvent) => Promise<void>
   deleteEvent: (id: string) => Promise<void>
   addMetric: (metric: Metric) => Promise<void>
+  /**
+   * Upsert a goal. Raising a target is two calls in order — the closed previous
+   * goal, then its replacement — which is what `supersede` in `core/goals.ts`
+   * returns; see the note there on why the history is preserved rather than
+   * rewritten.
+   */
+  saveGoal: (goal: Goal) => Promise<void>
+  deleteGoal: (id: string) => Promise<void>
 }
 
 /** Long enough to batch a burst of taps, short enough to feel instant. */
@@ -219,6 +227,27 @@ export function useTracker(repo: HabitRepository): TrackerApi {
             },
           }),
           () => repo.addMetric(metric),
+        ),
+      saveGoal: (goal) =>
+        write(
+          (s) => ({
+            ...s,
+            config: {
+              ...s.config,
+              goals: [...s.config.goals.filter((g) => g.id !== goal.id), goal].sort(
+                (a, b) => a.order - b.order,
+              ),
+            },
+          }),
+          () => repo.saveGoal(goal),
+        ),
+      deleteGoal: (id) =>
+        write(
+          (s) => ({
+            ...s,
+            config: { ...s.config, goals: s.config.goals.filter((g) => g.id !== id) },
+          }),
+          () => repo.deleteGoal(id),
         ),
     }),
     [status, error, snapshot, repo, saving, lastSavedAt, reload, setValue, flush, write],

@@ -15,6 +15,7 @@ import { compareWindows, computeMetricStats } from '../../core/stats'
 import { daysBetween } from '../../core/date'
 import { metricColor } from '../../core/colors'
 import { TrendChart, levelLabel } from './TrendChart'
+import { optionColors } from './FieldInput'
 import type { Bucket } from '../../core/stats'
 import type { DateRange, Entry, Metric, Tag } from '../../core/types'
 import '../dashboard.css'
@@ -48,6 +49,10 @@ export function MetricStatCard({ metric, entries, range, bucket, tags }: MetricS
   )
 
   const color = metricColor(metric, tags)
+  // The same per-option ramp the answer buttons use, so a distribution reads
+  // with the colours the question was answered in. Falls back to the metric's
+  // own colour for a label that is no longer in `options`.
+  const ramp = optionColors(metric)
   const dots = metric.tags
     .map((id) => tags.find((t) => t.id === id))
     .filter((t): t is Tag => t !== undefined)
@@ -140,7 +145,7 @@ export function MetricStatCard({ metric, entries, range, bucket, tags }: MetricS
                 <span
                   className="dist__bar"
                   style={{
-                    background: color,
+                    background: ramp?.[metric.options.indexOf(slice.label)] ?? color,
                     width: total === 0 ? '0%' : `${(slice.count / total) * 100}%`,
                   }}
                 />

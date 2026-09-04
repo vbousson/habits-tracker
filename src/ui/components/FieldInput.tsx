@@ -7,6 +7,13 @@
  * `null` (not answered) and `false` (answered "Non") are different values in the
  * data model, so they are drawn differently: an untouched control keeps a dashed
  * outline and no pressed option, an answered one is solid and carries a check.
+ *
+ * Graded answers carry `metric.colors` — a red-to-green mood, a green-to-red
+ * symptom scale. Only the *chosen* option is filled with its colour; the others
+ * keep a quiet dot, so the control stays a control rather than a rainbow. The
+ * colour is never the only signal: the selected option also carries a check
+ * glyph, a heavier weight and a ring, all of which survive a greyscale print
+ * and a red-green colour deficiency.
  */
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -42,6 +49,120 @@ export function dependentIds(metrics: Metric[], parentId: string): string[] {
   return out
 }
 
+/* --- Option colours ------------------------------------------------------- */
+
+/**
+ * Fallback ramp, worst to best, used when the spreadsheet declares no `colors`
+ * for an ordered scale, or fewer than it has options.
+ */
+const DEFAULT_RAMP = ['#c8503c', '#d99022', '#7fae4a', '#2f9e63']
+
+type Rgb = [number, number, number]
+
+/** `#abc` and `#aabbcc`, the two forms a spreadsheet cell realistically holds. */
+function parseHex(color: string): Rgb | null {
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
+  if (!match) return null
+  const hex = match[1]!
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex
+  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16)) as Rgb
+}
+
+/** WCAG 2.1 relative luminance. */
+function luminance([r, g, b]: Rgb): number {
+  const channel = (v: number) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+function ratio(a: number, b: number): number {
+  const [hi, lo] = a > b ? [a, b] : [b, a]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** WCAG contrast between two colours, or `null` if either cannot be parsed. */
+export function contrastOf(a: string, b: string): number | null {
+  const [x, y] = [parseHex(a), parseHex(b)]
+  if (!x || !y) return null
+  return ratio(luminance(x), luminance(y))
+}
+
+/**
+ * A foreground that reaches WCAG AA on `background`, or `null` when none does.
+ *
+ * Black and white are the extremes of the scale, so whichever of the two wins
+ * is the best any foreground can do. That maximum is never below 4.58:1 — it
+ * bottoms out around a luminance of 0.179, where both candidates sit just above
+ * the 4.5:1 bar — which is why picking the better of the two is enough and no
+ * further nudging is needed. The `null` branch is the guard that keeps the
+ * claim checked rather than assumed: an unparseable colour, or one that somehow
+ * failed, leaves the option in its neutral tone instead of shipping grey on
+ * yellow.
+ */
+export function readableOn(background: string): string | null {
+  const rgb = parseHex(background)
+  if (!rgb) return null
+  const l = luminance(rgb)
+  const onWhite = ratio(l, 1)
+  const onBlack = ratio(l, 0)
+  if (Math.max(onWhite, onBlack) < 4.5) return null
+  return onWhite >= onBlack ? '#ffffff' : '#000000'
+}
+
+/** Linear interpolation along `DEFAULT_RAMP`, `t` in 0..1. */
+function sampleRamp(t: number): string {
+  const last = DEFAULT_RAMP.length - 1
+  const position = Math.min(last, Math.max(0, t * last))
+  const index = Math.floor(position)
+  const from = parseHex(DEFAULT_RAMP[index]!)!
+  const to = parseHex(DEFAULT_RAMP[Math.min(last, index + 1)]!)!
+  const f = position - index
+  return `#${from
+    .map((v, i) => Math.round(v + (to[i]! - v) * f)
+      .toString(16)
+      .padStart(2, '0'))
+    .join('')}`
+}
+
+/**
+ * One colour per option, or `null` for the neutral look.
+ *
+ * `bool` stays neutral: its "Non" / "Oui" tones already read correctly and are
+ * not a grade. A `choice` with nothing configured stays neutral too — its
+ * labels are unordered, so there is no low-to-high ramp to invent. Everything
+ * else is filled in from `DEFAULT_RAMP`, so a half-filled `colors` column
+ * degrades instead of failing.
+ */
+export function optionColors(metric: Metric): string[] | null {
+  if (metric.type !== 'scale' && metric.type !== 'choice') return null
+  const count = metric.options.length
+  if (count === 0) return null
+  if (metric.colors.length === 0 && metric.type !== 'scale') return null
+  return metric.options.map(
+    (_, i) => metric.colors[i] ?? sampleRamp(count < 2 ? 1 : i / (count - 1)),
+  )
+}
+
+/** The colour fill and its verified foreground, or `null` to stay neutral. */
+function toneOf(colors: string[] | null, index: number): { bg: string; fg: string } | null {
+  const bg = colors?.[index]
+  if (bg === undefined) return null
+  const fg = readableOn(bg)
+  return fg === null ? null : { bg, fg }
+}
+
+/** Dot when quiet, check when chosen — the shape cue that outlives the colour. */
+function OptionMark({ color, selected }: { color: string | undefined; selected: boolean }) {
+  if (color === undefined) return null
+  return (
+    <span className="opt-mark" aria-hidden="true">
+      {selected ? <IconCheck size={12} /> : <span className="opt-dot" style={{ background: color }} />}
+    </span>
+  )
+}
+
 export function FieldInput({ field, onChange }: FieldInputProps) {
   const labelId = useId()
   const controlId = useId()
@@ -50,6 +171,7 @@ export function FieldInput({ field, onChange }: FieldInputProps) {
   const { metric, value, depth } = field
   const answered = value !== null && value !== ''
   const describedBy = metric.help ? helpId : undefined
+  const ramp = optionColors(metric)
   const asSelect = metric.type === 'choice' && metric.options.length > CHIP_LIMIT
   const asFreeText = metric.type === 'choice' && metric.options.length === 0
   // Buttons cannot be the target of a <label>, so grouped controls get an
@@ -101,17 +223,23 @@ export function FieldInput({ field, onChange }: FieldInputProps) {
           data-answered={answeredAttr}
           {...groupProps}
         >
-          {metric.options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="segmented__opt"
-              aria-pressed={value === option}
-              onClick={() => onChange(value === option ? null : option)}
-            >
-              {option}
-            </button>
-          ))}
+          {metric.options.map((option, i) => {
+            const selected = value === option
+            const tone = toneOf(ramp, i)
+            return (
+              <button
+                key={option}
+                type="button"
+                className={tone ? 'segmented__opt segmented__opt--tinted' : 'segmented__opt'}
+                aria-pressed={selected}
+                style={selected && tone ? { background: tone.bg, color: tone.fg } : undefined}
+                onClick={() => onChange(selected ? null : option)}
+              >
+                <OptionMark color={tone?.bg} selected={selected} />
+                {option}
+              </button>
+            )
+          })}
         </div>
       )
       break
@@ -149,17 +277,23 @@ export function FieldInput({ field, onChange }: FieldInputProps) {
       } else {
         control = (
           <div className="chips" data-answered={answeredAttr} {...groupProps}>
-            {metric.options.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="chip"
-                aria-pressed={value === option}
-                onClick={() => onChange(value === option ? null : option)}
-              >
-                {option}
-              </button>
-            ))}
+            {metric.options.map((option, i) => {
+              const selected = value === option
+              const tone = toneOf(ramp, i)
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  className={tone ? 'chip chip--tinted' : 'chip'}
+                  aria-pressed={selected}
+                  style={selected && tone ? { background: tone.bg, color: tone.fg } : undefined}
+                  onClick={() => onChange(selected ? null : option)}
+                >
+                  <OptionMark color={tone?.bg} selected={selected} />
+                  {option}
+                </button>
+              )
+            })}
           </div>
         )
       }

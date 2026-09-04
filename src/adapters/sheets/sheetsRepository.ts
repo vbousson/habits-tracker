@@ -33,14 +33,20 @@
  * save — last writer wins. Reloading the app re-syncs.
  */
 import {
-  entryToRow, eventToRow, metricToRow, noteToRow,
-  parseEntries, parseEvents, parseMetrics, parseNotes, parseTags,
+  eventToRow,
+  goalToRow, metricToRow, noteToRow,
+  parseEntries, parseEvents,
+  parseGoals, parseMetrics, parseNotes, parseTags,
   HEADERS, SHEET,
 } from '../../core/tabular'
 import { typeEntries } from '../../core/repository'
-import { batchGetValues, batchUpdateSpreadsheet, batchUpdateValues, getSpreadsheet, SheetsApiError } from './sheetsApi'
+import { serializeValue } from '../../core/values'
+import {
+  appendValues, batchGetValues, batchUpdateSpreadsheet, batchUpdateValues,
+  getSpreadsheet, SheetsApiError,
+} from './sheetsApi'
 import type { HabitRepository } from '../../core/repository'
-import type { Entry, ISODate, Metric, Note, Snapshot, TrackedEvent } from '../../core/types'
+import type { Entry, Goal, ISODate, Metric, Note, Snapshot, TrackedEvent } from '../../core/types'
 
 export interface SheetsRepositoryOptions {
   spreadsheetId: string
@@ -48,7 +54,7 @@ export interface SheetsRepositoryOptions {
   getAccessToken: () => Promise<string>
 }
 
-type TabKey = 'config' | 'tags' | 'entries' | 'notes' | 'events'
+type TabKey = 'config' | 'tags' | 'entries' | 'notes' | 'events' | 'goals'
 
 const TABS: Record<TabKey, { title: string; header: readonly string[] }> = {
   config: { title: SHEET.config, header: HEADERS.config },
@@ -56,9 +62,10 @@ const TABS: Record<TabKey, { title: string; header: readonly string[] }> = {
   entries: { title: SHEET.entries, header: HEADERS.entries },
   notes: { title: SHEET.notes, header: HEADERS.notes },
   events: { title: SHEET.events, header: HEADERS.events },
+  goals: { title: SHEET.goals, header: HEADERS.goals },
 }
 
-const TAB_KEYS: readonly TabKey[] = ['config', 'tags', 'entries', 'notes', 'events']
+const TAB_KEYS: readonly TabKey[] = ['config', 'tags', 'entries', 'notes', 'events', 'goals']
 
 /**
  * A range that is just a tab title means "everything that tab contains", which
@@ -90,7 +97,11 @@ export function createSheetsRepository(options: SheetsRepositoryOptions): HabitR
 
     const metrics = parseMetrics(cache.get('config') ?? [])
     return {
-      config: { metrics, tags: parseTags(cache.get('tags') ?? []) },
+      config: {
+        metrics,
+        tags: parseTags(cache.get('tags') ?? []),
+        goals: parseGoals(cache.get('goals') ?? []),
+      },
       entries: typeEntries(parseEntries(cache.get('entries') ?? []), metrics),
       notes: parseNotes(cache.get('notes') ?? []),
       events: parseEvents(cache.get('events') ?? []),
@@ -182,20 +193,59 @@ export function createSheetsRepository(options: SheetsRepositoryOptions): HabitR
     load: fetchAll,
 
     /**
-     * Same rule as the local adapter: drop *every* row of that day, then write
-     * the incoming ones. Replacement, not upsert — a metric the user cleared is
-     * absent from `entries` and its row has to disappear, otherwise an answer
-     * could never be un-answered.
+     * Replace every stored answer for `date` — implemented by appending only
+     * what actually changed.
      *
-     * This is also why the write pads with blank rows (see `mutate`): a day
-     * shrinking by one answer is the common case here, not an edge case.
+     * The obvious implementation rewrites the whole `Entries` tab. It is also
+     * unusable: at roughly 11 000 rows a year the payload reaches ~0.9 MB after
+     * twelve months and several megabytes after a few, and the evening routine
+     * sends it repeatedly over a mobile connection.
+     *
+     * So a change is appended instead, and an answer the user cleared is
+     * appended as a row with an **empty value** — a tombstone. `typeEntries`
+     * collapses each `(date, metricId)` to its last row and drops the empty
+     * ones, so readers see exactly what they saw before while the write stays a
+     * couple of kilobytes forever, whatever the history's size.
+     *
+     * Two consequences worth stating: the tab grows by one row per correction
+     * instead of being compacted — harmless for decades at this volume, see
+     * `docs/adr/0001-data-backend.md` — and a save that changes nothing sends no
+     * request at all, which matters because the UI autosaves on a timer.
      */
-    saveDay(date: ISODate, entries: Entry[]): Promise<void> {
-      return mutate('entries', (header, body) => {
-        const dateAt = columnIndex(header, HEADERS.entries, 'date')
-        const otherDays = body.filter((row) => cellAt(row, dateAt) !== date)
-        return [...otherDays, ...entries.map((e) => alignRow(header, HEADERS.entries, entryToRow(e)))]
-      })
+    async saveDay(date: ISODate, entries: Entry[]): Promise<void> {
+      if (!loaded) await fetchAll()
+
+      const rows = cache.get('entries') ?? []
+      const header = rows[0] ?? [...HEADERS.entries]
+      const body = rows.slice(1)
+      const current = effectiveDay(header, body, date)
+
+      const desired = new Map(entries.map((e) => [e.metricId, serializeValue(e.value)]))
+      const stamp = new Date().toISOString()
+      const appended: string[][] = []
+
+      const write = (metricId: string, value: string, at: string) => {
+        appended.push(alignRow(header, HEADERS.entries, [date, metricId, value, at]))
+      }
+
+      for (const e of entries) {
+        const value = desired.get(e.metricId) ?? ''
+        if ((current.get(e.metricId) ?? '') !== value) write(e.metricId, value, e.updatedAt || stamp)
+      }
+      // Anything answered before and absent now has been cleared by the user.
+      for (const [metricId, value] of current) {
+        if (value !== '' && !desired.has(metricId)) write(metricId, '', stamp)
+      }
+
+      if (appended.length === 0) return
+
+      const token = await getAccessToken()
+      // `insertDataOption=INSERT_ROWS` makes Google grow the grid itself, so
+      // this path needs none of the grid-limit retry that rewriting requires.
+      await appendValues(token, spreadsheetId, TABS.entries.title, appended)
+
+      cache.set('entries', [header, ...body, ...appended])
+      extent.set('entries', 1 + body.length + appended.length)
     },
 
     saveNote: (note: Note) => upsertById('notes', note.id, noteToRow(note)),
@@ -205,6 +255,9 @@ export function createSheetsRepository(options: SheetsRepositoryOptions): HabitR
     deleteEvent: (id: string) => deleteById('events', id),
 
     addMetric: (metric: Metric) => upsertById('config', metric.id, metricToRow(metric)),
+
+    saveGoal: (goal: Goal) => upsertById('goals', goal.id, goalToRow(goal)),
+    deleteGoal: (id: string) => deleteById('goals', id),
   }
 }
 
@@ -222,6 +275,29 @@ function padTo(row: readonly string[], width: number): string[] {
 
 function blankRow(width: number): string[] {
   return new Array<string>(width).fill('')
+}
+
+/**
+ * The effective answers for one day, honouring "a later row wins".
+ * Mirrors `typeEntries`, but over raw cells, because the diff has to compare
+ * against what is physically in the sheet.
+ */
+function effectiveDay(
+  header: readonly string[],
+  body: readonly (readonly string[])[],
+  date: ISODate,
+): Map<string, string> {
+  const dateAt = columnIndex(header, HEADERS.entries, 'date')
+  const metricAt = columnIndex(header, HEADERS.entries, 'metric_id')
+  const valueAt = columnIndex(header, HEADERS.entries, 'value')
+
+  const effective = new Map<string, string>()
+  for (const row of body) {
+    if (cellAt(row, dateAt) !== date) continue
+    const metricId = cellAt(row, metricAt)
+    if (metricId) effective.set(metricId, cellAt(row, valueAt))
+  }
+  return effective
 }
 
 function cellAt(row: readonly string[], index: number): string {

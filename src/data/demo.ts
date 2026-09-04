@@ -13,6 +13,7 @@
 import { addDays, todayISO, weekdayOf } from '../core/date'
 import { HEADERS } from '../core/tabular'
 import { STARTER_METRICS, starterConfigRows, starterTagRows } from './starter'
+import { starterGoalRows } from './starterGoals'
 import type { LocalStore } from '../adapters/local/localRepository'
 
 /** mulberry32 — tiny, fast, and good enough to look organic. */
@@ -131,7 +132,14 @@ export function buildDemoStore(): LocalStore {
     events.push([crypto.randomUUID(), label, addDays(today, from), addDays(today, to), tags.join('|'), note])
   }
 
-  return { config: starterConfigRows(), tags: starterTagRows(), entries, notes, events }
+  return {
+    config: starterConfigRows(),
+    tags: starterTagRows(),
+    entries,
+    notes,
+    events,
+    goals: starterGoalRows(),
+  }
 }
 
 /** Bias the draw towards the upper levels as `momentum` rises. */

@@ -10,6 +10,7 @@ const SATURDAY = '2026-09-05'
 
 const config: TrackerConfig = {
   tags: [],
+  goals: [],
   metrics: [
     metric({ id: 'velo', group: 'Sport', schedule: parseSchedule('weekdays'), order: 1 }),
     metric({ id: 'sport', group: 'Sport', order: 2 }),
@@ -76,6 +77,7 @@ describe('buildDailyForm', () => {
   it('does not loop forever on a config cycle', () => {
     const cyclic: TrackerConfig = {
       tags: [],
+      goals: [],
       metrics: [
         metric({ id: 'a', dependsOn: 'b' }),
         metric({ id: 'b', dependsOn: 'a' }),
@@ -147,6 +149,7 @@ describe('rare events recorded outside the daily flow', () => {
   it('hides a follow-up whose parent has been deactivated', () => {
     const withInactiveParent: TrackerConfig = {
       tags: [],
+      goals: [],
       metrics: [
         metric({ id: 'parent', active: false, mode: 'quick' }),
         metric({ id: 'child', dependsOn: 'parent' }),

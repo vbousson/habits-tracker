@@ -11,7 +11,58 @@ that bug reports can name something precise.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Goals.** A target placed on one or more metrics over a period — "cycle to
+  work at least twice a week", "snack at most two evenings" — evaluated per day,
+  week, month or rolling window, with an `only_when` clause so a goal is judged
+  only on the days it applies to. Goals live in a new `Goals` tab and are
+  editable in the app. Raising a target **closes the old goal and opens a new
+  one** rather than editing in place, so the history of what the bar used to be
+  stays truthful.
+- **Per-option colours.** A `colors` column on `Config` tints the answer buttons
+  of a graded question, low to high. Colour is never the only signal: the chosen
+  option also carries a check glyph, heavier weight and an inset ring.
+- **Fill-time measurement.** An `auto` metric mode, for values the app writes
+  itself; the shipped `duree_saisie` metric records how long a day takes to fill
+  in, so the evening routine can be measured and shortened.
+- **A catch-up banner** listing the days still owed an answer, each a tap away.
+- **Calendar reminders.** Settings generates an `.ics` with two daily events at
+  configurable times. This is the only reminder mechanism that works on every
+  platform without a server; see `docs/adr/0002-reminders.md` for why, and for
+  what it cannot do.
+- Documentation: `docs/INSTALLATION.md` (French setup runbook),
+  `docs/BRANDING.md`, `docs/MARKET.md`, and two ADRs on the data backend and on
+  reminders.
+
+### Changed
+
+- **New palette.** The previous one failed WCAG AA in six places — borders at
+  1.35:1, six of seven tag colours below the threshold, the dark-theme "Oui"
+  label at 2.38:1. All 46 contrast pairs now pass, and the seven tag colours are
+  distinguishable under simulated protanopia and deuteranopia.
+- **The journal is one timeline.** Notes and events are interleaved
+  chronologically instead of living in two separate sections, and the day screen
+  now shows and can add the notes and events attached to the day being viewed.
+- **Quick add always offers a choice** of what to record, filtered by tag when
+  there are enough entries, and no longer asks for a date: it writes to today.
+  Backfilling stays where it belongs, on the day screen.
+- **Writes to Google Sheets are incremental.** A save used to rewrite the whole
+  `Entries` tab — about 0.9 MB after a year of history, several times an evening
+  on a mobile connection. Only the difference is appended now, with a
+  cleared answer recorded as an empty-value tombstone, so a save is a couple of
+  kilobytes whatever the history's size. A save that changes nothing sends no
+  request at all.
+- A new icon and a shorter page title.
+
+### Removed
+
+- **The printable and CSV doctor export.** It came from an example in the
+  original design document rather than from a real need. The data behind it — a
+  tagged, dated chronology of events with intensity and cause — is untouched, so
+  it can come back if it is ever actually wanted. `listOccurrences` went with it.
+- GitLab Pages support. GitHub Pages is the only deployment target.
+
 
 ## [0.1.0] — 2026-09-04
 
@@ -51,8 +102,6 @@ planned.
 - **Four screens** — the evening form with quick add, the journal (notes and
   events, filterable by tag), the dashboard (calendar heatmap, trend charts, per-
   metric cards, sliceable by tag) and settings. All charts are hand-drawn SVG.
-- **Printable summary and CSV export** for a medical appointment: a date range,
-  the metrics, and the notes and events in that window.
 - **Unit tests** covering the domain core — dates, values, schedules, the tabular
   mapping, the form engine, the statistics — and the local backend.
 - **React shell** — settings, backend selection, and the `useTracker` hook that

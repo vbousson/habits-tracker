@@ -7,7 +7,7 @@
 import { addDays, eachDay, inRange, startOfMonth, startOfWeek } from './date'
 import { isDueOn } from './schedule'
 import { isTruthy, normalize } from './values'
-import type { DateRange, Entry, ISODate, Metric, MetricValue, TrackerConfig } from './types'
+import type { DateRange, Entry, ISODate, Metric, TrackerConfig } from './types'
 
 /** Metrics that count towards a day's score: the ones actually asked that day. */
 function dueMetrics(config: TrackerConfig, date: ISODate, tag?: string): Metric[] {
@@ -15,6 +15,7 @@ function dueMetrics(config: TrackerConfig, date: ISODate, tag?: string): Metric[
     (m) =>
       m.active &&
       m.mode !== 'quick' &&
+      m.mode !== 'auto' &&
       !m.dependsOn &&
       isDueOn(m.schedule, date) &&
       (!tag || m.tags.includes(tag)),
@@ -126,7 +127,7 @@ export function computeMetricStats(
   const counts = new Map<string, number>()
 
   for (const date of eachDay(range)) {
-    const isDue = metric.mode !== 'quick' && isDueOn(metric.schedule, date)
+    const isDue = metric.mode !== 'quick' && metric.mode !== 'auto' && isDueOn(metric.schedule, date)
     if (isDue) due += 1
     const value = values.get(date)
     if (value === undefined || value === null || value === '') {
@@ -305,81 +306,4 @@ export function summarizeRange(days: DaySummary[]): RangeSummary {
     averageScore: scored === 0 ? null : scoreSum / scored,
     currentStreak,
   }
-}
-
-export interface Occurrence {
-  date: ISODate
-  metric: Metric
-  value: MetricValue
-  /** Same-day answers of the metrics that depend on this one (intensity, cause…). */
-  details: { metric: Metric; value: MetricValue }[]
-}
-
-export interface OccurrenceOptions {
-  /** Keep only metrics carrying this tag. */
-  tag?: string
-  /**
-   * Restrict to the rare, out-of-routine metrics — the ones declared `quick`
-   * or never scheduled. `false` walks every metric instead.
-   */
-  rareOnly?: boolean
-}
-
-/**
- * Chronology of the notable records in a range: one row per (day, metric) that
- * was answered *positively*, with its dependent answers attached.
- *
- * This is the timeline a doctor actually reads — "three flare-ups in June, two
- * of them after swimming" — rather than a dump of every cell.
- */
-export function listOccurrences(
-  config: TrackerConfig,
-  entries: Entry[],
-  range: DateRange,
-  options: OccurrenceOptions = {},
-): Occurrence[] {
-  const { tag, rareOnly = true } = options
-  const metricsById = new Map(config.metrics.map((m) => [m.id, m]))
-
-  const dependents = new Map<string, Metric[]>()
-  for (const metric of config.metrics) {
-    if (!metric.dependsOn) continue
-    const list = dependents.get(metric.dependsOn)
-    if (list) list.push(metric)
-    else dependents.set(metric.dependsOn, [metric])
-  }
-  for (const list of dependents.values()) list.sort((a, b) => a.order - b.order)
-
-  const byDate = new Map<ISODate, Map<string, MetricValue>>()
-  for (const e of entries) {
-    if (!inRange(e.date, range)) continue
-    let day = byDate.get(e.date)
-    if (!day) byDate.set(e.date, (day = new Map()))
-    day.set(e.metricId, e.value)
-  }
-
-  const isRare = (m: Metric) => m.mode !== 'daily' || m.schedule.days.length === 0
-
-  const out: Occurrence[] = []
-  for (const [date, day] of byDate) {
-    for (const [metricId, value] of day) {
-      const metric = metricsById.get(metricId)
-      if (!metric || !metric.active || metric.dependsOn) continue
-      if (rareOnly && !isRare(metric)) continue
-      if (tag && !metric.tags.includes(tag)) continue
-      if (!isTruthy(metric, value)) continue
-
-      const details: Occurrence['details'] = []
-      for (const child of dependents.get(metric.id) ?? []) {
-        const childValue = day.get(child.id)
-        if (childValue === undefined || childValue === null || childValue === '') continue
-        details.push({ metric: child, value: childValue })
-      }
-      out.push({ date, metric, value, details })
-    }
-  }
-
-  return out.sort((a, b) =>
-    a.date === b.date ? a.metric.order - b.metric.order : a.date.localeCompare(b.date),
-  )
 }

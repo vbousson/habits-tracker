@@ -1,10 +1,10 @@
 /**
  * The "why bother tracking" screen: period + theme filter, a handful of
- * headline figures, the calendar heatmap, the trends worth charting, one card
- * per indicator, and the medical export.
+ * headline figures, the calendar heatmap, the trends worth charting and one
+ * card per indicator.
  *
- * Every number on this screen comes from `core/stats`, so the dashboard and the
- * export can never tell two different stories.
+ * Every number on this screen comes from `core/stats`, so no two panels can
+ * ever tell different stories about the same period.
  */
 import { useMemo, useState } from 'react'
 import { lastNDays } from '../../core/date'
@@ -14,10 +14,11 @@ import { Heatmap } from '../components/Heatmap'
 import { TrendChart } from '../components/TrendChart'
 import { MetricStatCard } from '../components/MetricStatCard'
 import { TagFilter } from '../components/TagFilter'
-import { ExportReport } from '../components/ExportReport'
-import { IconDownload, IconRefresh } from '../components/Icons'
+import { GoalsPanel } from '../components/GoalsPanel'
+import { GoalEditor } from '../components/GoalEditor'
+import { IconRefresh } from '../components/Icons'
 import type { Bucket, MetricStats } from '../../core/stats'
-import type { Entry, Note, TrackedEvent, TrackerConfig } from '../../core/types'
+import type { Entry, Goal, Note, TrackedEvent, TrackerConfig } from '../../core/types'
 import type { ScreenProps } from './types'
 import '../dashboard.css'
 
@@ -30,7 +31,7 @@ const RANGES = [
 type RangeKey = (typeof RANGES)[number]['key']
 
 /** Stable empty values, so the memos below do not re-run on every render. */
-const EMPTY_CONFIG: TrackerConfig = { metrics: [], tags: [] }
+const EMPTY_CONFIG: TrackerConfig = { metrics: [], tags: [], goals: [] }
 const EMPTY_ENTRIES: Entry[] = []
 const EMPTY_NOTES: Note[] = []
 const EMPTY_EVENTS: TrackedEvent[] = []
@@ -61,7 +62,7 @@ function SummaryCell({ label, value, sub }: { label: string; value: string; sub:
 export function DashboardScreen({ tracker }: ScreenProps) {
   const [rangeKey, setRangeKey] = useState<RangeKey>('90')
   const [tag, setTag] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
+  const [goalEdit, setGoalEdit] = useState<{ goal: Goal | null } | null>(null)
 
   const snapshot = tracker.snapshot
   const config = snapshot?.config ?? EMPTY_CONFIG
@@ -127,18 +128,6 @@ export function DashboardScreen({ tracker }: ScreenProps) {
     [stats],
   )
 
-  if (exporting && snapshot) {
-    // Rendered on its own so the print stylesheet has nothing else to hide.
-    return (
-      <ExportReport
-        snapshot={snapshot}
-        range={range}
-        tag={activeTag}
-        onClose={() => setExporting(false)}
-      />
-    )
-  }
-
   if (tracker.status === 'loading' && !snapshot) {
     return (
       <div className="empty">
@@ -196,8 +185,8 @@ export function DashboardScreen({ tracker }: ScreenProps) {
         <div className="empty">
           <strong>Rien à afficher pour l'instant</strong>
           <span>
-            Renseigne ta première journée dans l'onglet Aujourd'hui : le calendrier, les
-            tendances et l'export se rempliront tout seuls.
+            Renseigne ta première journée dans l'onglet Aujourd'hui : le calendrier et les
+            tendances se rempliront tout seuls.
           </span>
         </div>
       ) : (
@@ -232,6 +221,26 @@ export function DashboardScreen({ tracker }: ScreenProps) {
                 sub={comparison && best ? best.metric.label : 'données insuffisantes'}
               />
             </div>
+          </section>
+
+          <section className="stack stack--tight">
+            <div className="row row--between">
+              <h2 className="section-title">Objectifs</h2>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => setGoalEdit({ goal: null })}
+              >
+                Nouvel objectif
+              </button>
+            </div>
+            <GoalsPanel
+              config={config}
+              entries={entries}
+              tag={tag}
+              variant="full"
+              onEdit={(goal) => setGoalEdit({ goal })}
+            />
           </section>
 
           <section className="stack stack--tight">
@@ -301,25 +310,26 @@ export function DashboardScreen({ tracker }: ScreenProps) {
               ))
             )}
           </section>
-
-          <section className="stack stack--tight">
-            <h2 className="section-title">Export</h2>
-            <div className="card stack stack--tight">
-              <p className="small muted" style={{ margin: 0 }}>
-                Une synthèse imprimable de la période affichée, limitée au thème sélectionné —
-                de quoi arriver chez le médecin avec des dates plutôt que des souvenirs.
-              </p>
-              <button
-                type="button"
-                className="btn btn--primary btn--block"
-                onClick={() => setExporting(true)}
-              >
-                <IconDownload size={18} />
-                Préparer l'export
-              </button>
-            </div>
-          </section>
         </>
+      )}
+
+      {goalEdit && (
+        <GoalEditor
+          config={config}
+          goal={goalEdit.goal}
+          onSave={async (goals) => {
+            // Order matters: an evolution is the closed previous goal followed by
+            // its replacement, and writing them the other way round would leave
+            // two goals claiming the same day if the second write failed.
+            for (const goal of goals) await tracker.saveGoal(goal)
+            setGoalEdit(null)
+          }}
+          onDelete={async (id) => {
+            await tracker.deleteGoal(id)
+            setGoalEdit(null)
+          }}
+          onClose={() => setGoalEdit(null)}
+        />
       )}
     </div>
   )

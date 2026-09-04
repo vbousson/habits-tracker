@@ -11,7 +11,10 @@
  */
 import { parseSchedule } from './schedule'
 import { parseBoolean, serializeValue } from './values'
-import type { Entry, Metric, MetricMode, MetricType, Note, Tag, TrackedEvent } from './types'
+import type {
+  Entry, Goal, GoalAggregate, GoalComparator, GoalPeriod,
+  Metric, MetricMode, MetricType, Note, Tag, TrackedEvent,
+} from './types'
 
 export const SHEET = {
   config: 'Config',
@@ -19,15 +22,17 @@ export const SHEET = {
   entries: 'Entries',
   notes: 'Notes',
   events: 'Events',
+  goals: 'Goals',
   meta: 'Meta',
 } as const
 
 export const HEADERS = {
-  config: ['id', 'label', 'type', 'options', 'min', 'max', 'unit', 'tags', 'group', 'schedule', 'mode', 'depends_on', 'order', 'color', 'help', 'active'],
+  config: ['id', 'label', 'type', 'options', 'min', 'max', 'unit', 'tags', 'group', 'schedule', 'mode', 'depends_on', 'order', 'color', 'colors', 'help', 'active'],
   tags: ['id', 'label', 'color'],
   entries: ['date', 'metric_id', 'value', 'updated_at'],
   notes: ['id', 'date', 'tags', 'text', 'created_at'],
   events: ['id', 'label', 'start', 'end', 'tags', 'note'],
+  goals: ['id', 'label', 'metrics', 'aggregate', 'comparator', 'target', 'period', 'window_days', 'only_when', 'from', 'to', 'tags', 'color', 'help', 'active', 'order'],
   meta: ['key', 'value'],
 } as const
 
@@ -91,6 +96,7 @@ export function parseMetrics(rows: readonly (readonly string[])[]): Metric[] {
       dependsOn: get(row, 'depends_on') || undefined,
       order: get(row, 'order') !== '' && Number.isFinite(order) ? order : i,
       color: get(row, 'color') || undefined,
+      colors: splitList(get(row, 'colors')),
       help: get(row, 'help') || undefined,
       // An empty `active` cell means active — users add rows without filling it.
       active: activeCell === '' ? true : parseBoolean(activeCell) !== false,
@@ -108,7 +114,7 @@ function parseMetricType(raw: string): MetricType {
 
 function parseMode(raw: string): MetricMode {
   const s = raw.trim().toLowerCase()
-  return s === 'quick' || s === 'both' ? s : 'daily'
+  return s === 'quick' || s === 'both' || s === 'auto' ? s : 'daily'
 }
 
 export function metricToRow(m: Metric): string[] {
@@ -117,7 +123,7 @@ export function metricToRow(m: Metric): string[] {
     m.min === undefined ? '' : String(m.min),
     m.max === undefined ? '' : String(m.max),
     m.unit ?? '', joinList(m.tags), m.group, m.schedule.raw, m.mode,
-    m.dependsOn ?? '', String(m.order), m.color ?? '', m.help ?? '',
+    m.dependsOn ?? '', String(m.order), m.color ?? '', joinList(m.colors), m.help ?? '',
     m.active ? 'TRUE' : 'FALSE',
   ]
 }
@@ -195,4 +201,86 @@ export function parseEvents(rows: readonly (readonly string[])[]): TrackedEvent[
 
 export function eventToRow(e: TrackedEvent): string[] {
   return [e.id, e.label, e.start, e.end, joinList(e.tags), e.note]
+}
+
+const GOAL_AGGREGATES: readonly GoalAggregate[] = ['count', 'sum', 'average', 'rate', 'streak']
+const GOAL_COMPARATORS: readonly GoalComparator[] = ['>=', '<=', '==', '>', '<']
+const GOAL_PERIODS: readonly GoalPeriod[] = ['day', 'week', 'month', 'rolling']
+
+/** Accepts the spreadsheet-friendly spellings alongside the symbols. */
+const COMPARATOR_ALIASES: Record<string, GoalComparator> = {
+  'au moins': '>=', 'min': '>=', 'ge': '>=', 'gte': '>=', '=>': '>=', '≥': '>=',
+  'au plus': '<=', 'max': '<=', 'le': '<=', 'lte': '<=', '=<': '<=', '≤': '<=',
+  'exactement': '==', 'eq': '==', '=': '==',
+  'gt': '>', 'lt': '<',
+}
+
+export function parseGoals(rows: readonly (readonly string[])[]): Goal[] {
+  const [header = [], ...body] = rows
+  const get = reader(header, HEADERS.goals)
+  const goals: Goal[] = []
+
+  body.forEach((row, i) => {
+    const id = get(row, 'id')
+    if (!id) return
+    const target = Number(get(row, 'target').replace(',', '.'))
+    const windowDays = Number(get(row, 'window_days'))
+    const order = Number(get(row, 'order'))
+    const activeCell = get(row, 'active')
+
+    goals.push({
+      id,
+      label: get(row, 'label') || id,
+      metrics: splitList(get(row, 'metrics')),
+      aggregate: parseAggregate(get(row, 'aggregate')),
+      comparator: parseComparator(get(row, 'comparator')),
+      // A missing or unreadable target would silently make the goal always met,
+      // so it becomes 1 — the weakest meaningful bar — rather than 0.
+      target: Number.isFinite(target) ? target : 1,
+      period: parsePeriod(get(row, 'period')),
+      windowDays: Number.isFinite(windowDays) && windowDays > 0 ? windowDays : undefined,
+      onlyWhen: get(row, 'only_when') || undefined,
+      from: get(row, 'from'),
+      to: get(row, 'to') || undefined,
+      tags: splitList(get(row, 'tags')),
+      color: get(row, 'color') || undefined,
+      help: get(row, 'help') || undefined,
+      active: activeCell === '' ? true : parseBoolean(activeCell) !== false,
+      order: get(row, 'order') !== '' && Number.isFinite(order) ? order : i,
+    })
+  })
+
+  return goals.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
+}
+
+function parseAggregate(raw: string): GoalAggregate {
+  const s = raw.trim().toLowerCase()
+  return (GOAL_AGGREGATES as readonly string[]).includes(s) ? (s as GoalAggregate) : 'count'
+}
+
+function parseComparator(raw: string): GoalComparator {
+  const s = raw.trim().toLowerCase()
+  if ((GOAL_COMPARATORS as readonly string[]).includes(s)) return s as GoalComparator
+  return COMPARATOR_ALIASES[s] ?? '>='
+}
+
+function parsePeriod(raw: string): GoalPeriod {
+  const s = raw.trim().toLowerCase()
+  if ((GOAL_PERIODS as readonly string[]).includes(s)) return s as GoalPeriod
+  const aliases: Record<string, GoalPeriod> = {
+    jour: 'day', quotidien: 'day', daily: 'day',
+    semaine: 'week', hebdo: 'week', hebdomadaire: 'week', weekly: 'week',
+    mois: 'month', mensuel: 'month', monthly: 'month',
+    glissant: 'rolling', roulant: 'rolling',
+  }
+  return aliases[s] ?? 'week'
+}
+
+export function goalToRow(g: Goal): string[] {
+  return [
+    g.id, g.label, joinList(g.metrics), g.aggregate, g.comparator, String(g.target),
+    g.period, g.windowDays === undefined ? '' : String(g.windowDays),
+    g.onlyWhen ?? '', g.from, g.to ?? '', joinList(g.tags),
+    g.color ?? '', g.help ?? '', g.active ? 'TRUE' : 'FALSE', String(g.order),
+  ]
 }

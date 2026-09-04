@@ -32,10 +32,13 @@ export interface Schedule {
 /**
  * Where a metric shows up.
  * - `daily` — part of the evening routine.
- * - `quick`  — rare, out-of-flow: reachable via a quick-add button, never asked.
- * - `both`   — asked daily *and* quick-addable.
+ * - `quick` — rare, out-of-flow: reachable via a quick-add button, never asked.
+ * - `both`  — asked daily *and* quick-addable.
+ * - `auto`  — never asked at all; the app writes it. Used for measurements about
+ *             the act of tracking itself, such as how long a day took to fill in.
+ *             It still flows through the statistics like any other metric.
  */
-export type MetricMode = 'daily' | 'quick' | 'both'
+export type MetricMode = 'daily' | 'quick' | 'both' | 'auto'
 
 /** One thing being tracked. Defined entirely in the spreadsheet, never in code. */
 export interface Metric {
@@ -62,6 +65,12 @@ export interface Metric {
   order: number
   /** Optional override; falls back to the colour of the first tag. */
   color?: string
+  /**
+   * One colour per entry in `options`, so a graded answer can read at a glance
+   * — red through green for a mood, for instance. Empty means "derive it", and a
+   * shorter list than `options` is padded by derivation rather than rejected.
+   */
+  colors: string[]
   help?: string
   active: boolean
 }
@@ -101,9 +110,70 @@ export interface TrackedEvent {
   note: string
 }
 
+/** How a goal turns a period's worth of answers into one number. */
+export type GoalAggregate =
+  /** Days in the period on which any of `metrics` was answered positively. */
+  | 'count'
+  /** Sum of the numeric answers. */
+  | 'sum'
+  /** Mean of the numeric answers. */
+  | 'average'
+  /** Positive days divided by eligible days, as a percentage (0-100). */
+  | 'rate'
+  /** Longest run of consecutive positive days inside the period. */
+  | 'streak'
+
+export type GoalComparator = '>=' | '<=' | '==' | '>' | '<'
+
+export type GoalPeriod = 'day' | 'week' | 'month' | 'rolling'
+
+/**
+ * A target placed on one or more metrics over a period.
+ *
+ * This is what turns tracking into something with a verdict: recording that the
+ * bike was used on three days is data, "at least twice a week" is a goal, and
+ * only the second one can be met or missed.
+ *
+ * Goals span several metrics on purpose — "three sessions a week" can be
+ * satisfied by cycling, by an evening workout or by a club session, and forcing
+ * that into three separate targets would misrepresent the intent.
+ *
+ * `from` / `to` make goals a *history* rather than a setting. Raising a target
+ * closes the current row and appends a new one, so a chart can still say that
+ * two a week was the bar in September and three from January. Editing in place
+ * would quietly rewrite the past and make every earlier verdict a lie.
+ */
+export interface Goal {
+  id: string
+  label: string
+  /** Metric ids this goal is computed over; a day qualifies if any of them does. */
+  metrics: string[]
+  aggregate: GoalAggregate
+  comparator: GoalComparator
+  target: number
+  period: GoalPeriod
+  /** Window length in days when `period` is `rolling`. Defaults to 7. */
+  windowDays?: number
+  /**
+   * Restricts the days a goal is judged on to those where this metric is truthy
+   * — "bring lunch four times a week" only makes sense on days spent at work.
+   */
+  onlyWhen?: string
+  /** First day the goal applies. */
+  from: ISODate
+  /** Last day it applies, inclusive. Absent means "still current". */
+  to?: ISODate
+  tags: string[]
+  color?: string
+  help?: string
+  active: boolean
+  order: number
+}
+
 export interface TrackerConfig {
   metrics: Metric[]
   tags: Tag[]
+  goals: Goal[]
 }
 
 /** Everything a backend hands over in one read. */

@@ -121,6 +121,33 @@
   line-height: 1.25;
 }
 
+/* --- Coloured answer options ---------------------------------------------
+   `metric.colors` fills the *selected* option only. Colour is never the sole
+   signal: the chosen option also carries a check glyph in place of its dot, a
+   heavier weight and an inset ring, so the control still reads in greyscale and
+   under a red-green deficiency. Selectors are doubled up on purpose — form.css
+   and styles.css can land in either order in the bundle. */
+
+.opt-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: none;
+  vertical-align: -2px;
+}
+
+.segmented__opt .opt-mark { margin-inline-end: 5px; }
+.opt-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+.segmented__opt.segmented__opt--tinted[aria-pressed='true'],
+.chip.chip--tinted[aria-pressed='true'] {
+  font-weight: 800;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 45%, transparent);
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -292,3 +319,54 @@
   font-size: 0.71rem;
   font-weight: 700;
 }
+
+/* --- Journal timeline ----------------------------------------------------- */
+
+/* The month band: what makes a year of entries skimmable by thumb. */
+.timeline__month {
+  margin: 6px 0 2px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.timeline__month::first-letter { text-transform: uppercase; }
+
+/* Notes and events share the timeline, so the kind has to read from the row
+   itself: an event carries an accent bar on its leading edge and a badge, a
+   note stays flat. Both cues are independent of colour. */
+.entry--event { border-inline-start: 4px solid var(--accent); }
+.entry--note { border-inline-start: 4px solid var(--surface-3); }
+
+/* Long text folds instead of pushing the actions off the screen. */
+.entry__text--clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- The day screen's own notes and events -------------------------------- */
+
+.daylog { display: flex; flex-direction: column; gap: 6px; }
+
+.daylog__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.84rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.daylog__row--event { border-inline-start-color: var(--accent); }
+.daylog__row--note { border-inline-start-color: var(--surface-3); }
+.daylog__row:hover { background: var(--surface-2); }
+.daylog__row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

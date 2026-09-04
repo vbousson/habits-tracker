@@ -75,8 +75,6 @@ runs the real app entirely in your browser, with no sign-in._
   against the previous window — and a blank where there is not enough data,
   rather than an invented trend. Charts are hand-drawn SVG; the whole dashboard
   slices by tag.
-- **A printable summary for your doctor**: pick a date range, get one page of
-  metrics, notes and events — plus the same selection as CSV.
 - **Offline demo backend**, so you can try the real app with no Google account at
   all. It is not a mock: it runs the same form engine and the same statistics.
 - **Installable PWA** with a hand-written service worker. Works offline, opens
@@ -336,6 +334,10 @@ This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
 | [GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) | Google Cloud project, OAuth client, your spreadsheet. |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages, any static host, and what to do when it 404s. |
 | [ROADMAP.md](docs/ROADMAP.md) | What is done, what is planned, and what is deliberately not. |
+| [BRANDING.md](docs/BRANDING.md) | The palette and its measured contrast ratios, the name shortlist, the logo. |
+| [adr/0001-data-backend.md](docs/adr/0001-data-backend.md) | Why the data lives in a spreadsheet, what it would cost to move, and the conditions that should make us revisit it. |
+| [adr/0002-reminders.md](docs/adr/0002-reminders.md) | What the web platform can and cannot schedule without a server, and the design that keeps the reminder decision on the device. |
+| [MARKET.md](docs/MARKET.md) | Competitive study of the habit / symptom / mood tracking space, and whether this is worth productising. |
 | [CHANGELOG.md](CHANGELOG.md) | Notable changes, [Keep a Changelog](https://keepachangelog.com/) format. |
 
 ## Licence

@@ -105,9 +105,6 @@ Turning a year of taps into something worth looking at.
       be added.
 - [x] Calendar heatmap of day scores.
 - [x] Slicing the whole dashboard by tag.
-- [x] A printable summary for a medical appointment — a date range, the metrics,
-      the notes and events in that window — plus a CSV export of the same
-      selection.
 - [ ] Correlations between metrics — carefully. The honest version says
       "these two moved together", never "this caused that", and refuses to draw
       anything from a sample too small to mean something.
@@ -156,5 +153,4 @@ Saying no is part of a roadmap.
 - **A native app.** The PWA installs to the home screen and works offline. An App
   Store presence would cost more than it returns.
 - **Medical claims of any kind.** The app records what you tell it and computes
-  arithmetic on it. It does not diagnose, advise, or interpret. A printable
-  summary for a doctor is a summary, not an opinion.
+  arithmetic on it. It does not diagnose, advise, or interpret.

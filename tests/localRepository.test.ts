@@ -1,35 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createLocalRepository } from '../src/adapters/local/localRepository'
 import { buildDemoStore } from '../src/data/demo'
-import { entry, metric } from './helpers'
+import { entry, installMemoryStorage, metric } from './helpers'
 import type { HabitRepository } from '../src/core/repository'
-
-/**
- * A minimal in-memory `localStorage`, so the storage adapter is testable without
- * pulling in a whole DOM implementation as a dependency.
- */
-function installStorage(): void {
-  const data = new Map<string, string>()
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: (k: string) => data.get(k) ?? null,
-      setItem: (k: string, v: string) => void data.set(k, v),
-      removeItem: (k: string) => void data.delete(k),
-      clear: () => data.clear(),
-      key: (i: number) => [...data.keys()][i] ?? null,
-      get length() {
-        return data.size
-      },
-    },
-  })
-}
 
 describe('local repository', () => {
   let repo: HabitRepository
 
   beforeEach(() => {
-    installStorage()
+    installMemoryStorage()
     repo = createLocalRepository('test')
   })
 
@@ -117,7 +96,7 @@ describe('local repository', () => {
 })
 
 describe('demo data', () => {
-  beforeEach(installStorage)
+  beforeEach(installMemoryStorage)
 
   it('is deterministic, so the demo looks identical on every device', () => {
     const a = buildDemoStore()

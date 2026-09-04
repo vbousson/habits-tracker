@@ -24,21 +24,23 @@ interface StarterMetric {
   unit?: string
   tags: string[]
   group: string
+  /** One colour per option, low to high. Left out where a ramp would mislead. */
+  colors?: string[]
   schedule?: string
-  mode?: 'daily' | 'quick' | 'both'
+  mode?: 'daily' | 'quick' | 'both' | 'auto'
   depends_on?: string
   order: number
   help?: string
 }
 
 export const STARTER_TAGS: { id: string; label: string; color: string }[] = [
-  { id: 'sante', label: 'Santé', color: '#d4553f' },
-  { id: 'sport', label: 'Sport', color: '#2f9e63' },
-  { id: 'travail', label: 'Travail', color: '#3d6fd8' },
-  { id: 'alimentation', label: 'Alimentation', color: '#d99022' },
-  { id: 'famille', label: 'Famille', color: '#a05fd4' },
-  { id: 'forme', label: 'Forme', color: '#0fa3a3' },
-  { id: 'social', label: 'Social', color: '#e0568c' },
+  { id: 'sante', label: 'Santé', color: '#be4c40' },
+  { id: 'sport', label: 'Sport', color: '#347f43' },
+  { id: 'travail', label: 'Travail', color: '#3471c2' },
+  { id: 'alimentation', label: 'Alimentation', color: '#876e22' },
+  { id: 'famille', label: 'Famille', color: '#b33fb3' },
+  { id: 'forme', label: 'Forme', color: '#257d79' },
+  { id: 'social', label: 'Social', color: '#c7387d' },
 ]
 
 export const STARTER_METRICS: StarterMetric[] = [
@@ -60,6 +62,8 @@ export const STARTER_METRICS: StarterMetric[] = [
   {
     id: 'symptomes_respiratoires', label: 'Symptômes respiratoires', type: 'scale',
     options: ['Aucun', 'Légers', 'Modérés', 'Forts'],
+    // Reversed on purpose: "Aucun" is the good end here.
+    colors: ['#2f9e63', '#d99022', '#d97b2f', '#c8503c'],
     tags: ['sante'], group: 'Santé', order: 30,
   },
   // A rare event: never asked in the daily flow, always one tap away.
@@ -71,6 +75,7 @@ export const STARTER_METRICS: StarterMetric[] = [
   {
     id: 'urticaire_intensite', label: 'Intensité de la crise', type: 'scale',
     options: ['Légère', 'Moyenne', 'Forte'],
+    colors: ['#e0a548', '#d97b2f', '#c8503c'],
     tags: ['sante'], group: 'Santé', depends_on: 'crise_urticaire', order: 41,
   },
   {
@@ -121,11 +126,13 @@ export const STARTER_METRICS: StarterMetric[] = [
   {
     id: 'enfant_1_etat', label: 'Enfant 1 — état de la journée', type: 'scale',
     options: ['Difficile', 'Mitigé', 'Bon', 'Très bon'],
+    colors: ['#c8503c', '#d99022', '#7fae4a', '#2f9e63'],
     tags: ['famille'], group: 'Famille', order: 120,
   },
   {
     id: 'enfant_2_etat', label: 'Enfant 2 — état de la journée', type: 'scale',
     options: ['Difficile', 'Mitigé', 'Bon', 'Très bon'],
+    colors: ['#c8503c', '#d99022', '#7fae4a', '#2f9e63'],
     tags: ['famille'], group: 'Famille', order: 130,
   },
 
@@ -138,12 +145,24 @@ export const STARTER_METRICS: StarterMetric[] = [
   {
     id: 'sommeil', label: 'Qualité du sommeil', type: 'scale',
     options: ['Mauvaise', 'Moyenne', 'Bonne', 'Excellente'],
+    colors: ['#c8503c', '#d99022', '#7fae4a', '#2f9e63'],
     tags: ['forme'], group: 'Forme', order: 150,
   },
   {
     id: 'humeur', label: 'Humeur générale', type: 'scale',
     options: ['Basse', 'Moyenne', 'Bonne', 'Très bonne'],
+    colors: ['#c8503c', '#d99022', '#7fae4a', '#2f9e63'],
     tags: ['forme'], group: 'Forme', order: 160,
+  },
+
+  // --- Méta --------------------------------------------------------------
+  {
+    // Written by the app, never asked. Shortening the evening routine is itself
+    // a goal, and it cannot be improved without being measured.
+    id: 'duree_saisie', label: 'Temps de saisie', type: 'number',
+    min: 0, max: 900, unit: 's',
+    tags: [], group: 'Méta', mode: 'auto', order: 900,
+    help: 'Mesuré automatiquement : le temps passé à remplir la journée.',
   },
 ]
 
@@ -157,7 +176,8 @@ export function starterConfigRows(): string[][] {
       m.id, m.label, m.type, (m.options ?? []).join('|'),
       cell(m.min), cell(m.max), cell(m.unit),
       m.tags.join('|'), m.group, m.schedule ?? 'daily', m.mode ?? 'daily',
-      cell(m.depends_on), String(m.order), '', cell(m.help), 'TRUE',
+      cell(m.depends_on), String(m.order), '', (m.colors ?? []).join('|'),
+      cell(m.help), 'TRUE',
     ])
   }
   return rows

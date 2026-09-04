@@ -12,6 +12,7 @@
  */
 import { HEADERS, SHEET } from '../../core/tabular'
 import { starterConfigRows, starterTagRows } from '../../data/starter'
+import { starterGoalRows } from '../../data/starterGoals'
 import {
   batchUpdateSpreadsheet,
   batchUpdateValues,
@@ -36,6 +37,7 @@ const TAB_ORDER = [
   SHEET.entries,
   SHEET.notes,
   SHEET.events,
+  SHEET.goals,
   SHEET.meta,
 ] as const
 
@@ -46,6 +48,7 @@ const HEADER_BY_TAB: Record<string, readonly string[]> = {
   [SHEET.entries]: HEADERS.entries,
   [SHEET.notes]: HEADERS.notes,
   [SHEET.events]: HEADERS.events,
+  [SHEET.goals]: HEADERS.goals,
   [SHEET.meta]: HEADERS.meta,
 }
 
@@ -65,16 +68,18 @@ const ROW_COUNTS: Record<string, number> = {
   [SHEET.entries]: 20000,
   [SHEET.notes]: 5000,
   [SHEET.events]: 1000,
+  [SHEET.goals]: 500,
   [SHEET.meta]: 100,
 }
 
 const COLUMN_WIDTHS: Record<string, readonly number[]> = {
   // id  label type options min max unit tags group sched mode depends order color help active
-  [SHEET.config]: [150, 230, 90, 260, 70, 70, 80, 170, 150, 120, 90, 170, 70, 90, 320, 80],
+  [SHEET.config]: [150, 230, 90, 260, 70, 70, 80, 170, 150, 120, 90, 170, 70, 90, 220, 320, 80],
   [SHEET.tags]: [140, 200, 100],
   [SHEET.entries]: [120, 190, 200, 200],
   [SHEET.notes]: [160, 120, 180, 420, 200],
   [SHEET.events]: [160, 240, 120, 120, 180, 360],
+  [SHEET.goals]: [160, 300, 220, 110, 110, 80, 100, 110, 140, 110, 110, 170, 90, 300, 80, 70],
   [SHEET.meta]: [180, 320],
   [GUIDE_SHEET]: [260, 700],
 }
@@ -136,6 +141,7 @@ export async function createTrackerSpreadsheet(
     { range: `${SHEET.entries}!A1`, values: [[...HEADERS.entries]] },
     { range: `${SHEET.notes}!A1`, values: [[...HEADERS.notes]] },
     { range: `${SHEET.events}!A1`, values: [[...HEADERS.events]] },
+    { range: `${SHEET.goals}!A1`, values: starterGoalRows() },
     { range: `${SHEET.meta}!A1`, values: metaRows() },
   ])
 
@@ -329,8 +335,17 @@ function decorationRequests(sheetId: number, tabTitle: string): SpreadsheetReque
     // warns instead of rejecting, so a typo never blocks the user mid-edit.
     requests.push(
       dropdown(sheetId, HEADERS.config.indexOf('type'), ['bool', 'scale', 'choice', 'number', 'text']),
-      dropdown(sheetId, HEADERS.config.indexOf('mode'), ['daily', 'quick', 'both']),
+      dropdown(sheetId, HEADERS.config.indexOf('mode'), ['daily', 'quick', 'both', 'auto']),
       dropdown(sheetId, HEADERS.config.indexOf('active'), ['TRUE', 'FALSE']),
+    )
+  }
+
+  if (tabTitle === SHEET.goals) {
+    requests.push(
+      dropdown(sheetId, HEADERS.goals.indexOf('aggregate'), ['count', 'sum', 'average', 'rate', 'streak']),
+      dropdown(sheetId, HEADERS.goals.indexOf('comparator'), ['>=', '<=', '==', '>', '<']),
+      dropdown(sheetId, HEADERS.goals.indexOf('period'), ['day', 'week', 'month', 'rolling']),
+      dropdown(sheetId, HEADERS.goals.indexOf('active'), ['TRUE', 'FALSE']),
     )
   }
 
@@ -388,6 +403,7 @@ function guideRows(): string[][] {
     ['Entries', "Tes réponses, une ligne par (jour, mesure). Rempli par l'application."],
     ['Notes', "Le journal libre. Rempli par l'application."],
     ['Events', 'Les périodes marquantes (vacances, rush…) affichées sur les graphiques.'],
+    ['Goals', "Tes objectifs : les cibles que tu te fixes sur une ou plusieurs mesures. C'est le deuxième onglet que tu modifies à la main."],
     ['Meta', "Version du format de fichier. Ne pas modifier."],
     ['', ''],
     ['L’ONGLET CONFIG, COLONNE PAR COLONNE', ''],
@@ -400,12 +416,30 @@ function guideRows(): string[][] {
     ['tags', "Un ou plusieurs identifiants de l'onglet Tags, séparés par | . Ex. : sport|travail ."],
     ['group', "Le titre de section sous lequel la question apparaît dans le formulaire (ex. Santé)."],
     ['schedule', "Les jours où la question est posée. Valeurs : daily (tous les jours, par défaut), weekdays (lundi→vendredi), weekends (samedi & dimanche), never (jamais posée), ou une liste de jours : lun,mer,ven (ou mon,wed,fri)."],
-    ['mode', "Où la mesure apparaît. daily = dans le formulaire du jour. quick = uniquement via le bouton d'ajout rapide, pour un événement rare. both = les deux."],
+    ['mode', "Où la mesure apparaît. daily = dans le formulaire du jour. quick = uniquement via le bouton d'ajout rapide, pour un événement rare. both = les deux. auto = jamais demandée, l'application la remplit elle-même (c'est le cas de « Temps de saisie »)."],
     ['depends_on', "L'id d'une autre mesure. La question n'est posée que si la réponse à cette autre mesure, le même jour, est positive. C'est ce qui permet d'enchaîner « Crise d'urticaire ? » → « Intensité ? » → « Cause présumée ? » sans encombrer le formulaire."],
     ['order', "Un nombre qui fixe l'ordre d'affichage (10, 20, 30… laisse des trous pour intercaler plus tard)."],
     ['color', "Couleur personnalisée au format #rrggbb. Vide = la couleur du premier tag."],
+    ['colors', "Une couleur par option, dans le même ordre, séparées par | . Ex. pour une humeur : #c8503c|#d99022|#7fae4a|#2f9e63 . Sert à colorer les boutons de réponse, du rouge au vert. Attention au sens : pour « Symptômes », c'est « Aucun » qui est la bonne réponse, donc la rampe est inversée. Vide = couleurs neutres."],
     ['help', "Une phrase d'aide affichée sous la question. Facultatif."],
     ['active', "TRUE pour suivre la mesure, FALSE pour l'archiver sans perdre l'historique. Vide = TRUE."],
+    ['', ''],
+    ['L’ONGLET GOALS, COLONNE PAR COLONNE', ''],
+    ['', "Un objectif transforme une mesure en verdict. « Vélo utilisé 3 jours cette semaine » est une donnée ; « au moins 2 fois par semaine » est un objectif, et lui seul peut être atteint ou manqué."],
+    ['id', "Identifiant technique unique (ex. obj_velo)."],
+    ['label', "Le libellé affiché (ex. « Aller au travail à vélo 2 fois par semaine »)."],
+    ['metrics', "Un ou plusieurs id de l'onglet Config, séparés par | . Avec plusieurs mesures, un jour compte dès que l'une d'elles est positive : « bouger 3 fois par semaine » est satisfait par une séance, un cours en club OU un trajet à vélo."],
+    ['aggregate', "Ce qu'on calcule sur la période. count = nombre de jours positifs. sum = somme des valeurs (type number). average = moyenne. rate = pourcentage de jours positifs parmi les jours concernés. streak = plus longue série consécutive."],
+    ['comparator', "Le sens de la cible : >= (au moins), <= (au plus), == (exactement), > , < ."],
+    ['target', "La valeur à atteindre. Pour rate, c'est un pourcentage (70 = 70 %)."],
+    ['period', "La fenêtre d'évaluation. day = chaque jour. week = la semaine (du lundi au dimanche). month = le mois civil. rolling = les N derniers jours glissants."],
+    ['window_days', "Le nombre de jours, uniquement quand period = rolling. Ex. 30. Vide = 7."],
+    ['only_when', "Facultatif : l'id d'une mesure qui doit être positive pour que le jour soit pris en compte. C'est ainsi qu'on écrit « apporter son repas 4 fois par semaine » sans être pénalisé les jours de télétravail."],
+    ['from', "Le premier jour où l'objectif s'applique (AAAA-MM-JJ). Vide = depuis toujours."],
+    ['to', "Le dernier jour où il s'applique, inclus. Vide = objectif toujours en cours."],
+    ['', "IMPORTANT — pour relever une cible, ne modifie pas la ligne : renseigne sa colonne to, puis ajoute une nouvelle ligne avec la nouvelle cible et un from. L'historique reste ainsi exact, et l'application peut dire que la barre était à 2 en septembre et à 3 depuis janvier. Modifier sur place réécrirait le passé et rendrait faux tous les verdicts déjà rendus."],
+    ['tags', "Comme pour Config : un ou plusieurs tags séparés par | ."],
+    ['color / help / active', "Mêmes règles que dans Config."],
     ['', ''],
     ['LES TYPES DE MESURE', ''],
     ['bool', "Oui / non. Le plus simple et le plus fiable à remplir tous les soirs."],

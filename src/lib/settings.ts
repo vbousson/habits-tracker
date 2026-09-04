@@ -16,6 +16,15 @@ export interface Settings {
   theme: ThemeChoice
   /** Set once the local demo data has been generated, so it is only seeded once. */
   demoSeeded: boolean
+  /**
+   * Reminder times as `HH:MM` local, or `''` to disable one.
+   *
+   * These do not schedule anything by themselves — a static site has no server
+   * and the web platform cannot schedule a notification without one. They feed
+   * the calendar file offered in Settings; see `docs/adr/0002-reminders.md`.
+   */
+  reminderEvening: string
+  reminderMorning: string
 }
 
 const KEY = 'habits-tracker:settings'
@@ -29,6 +38,8 @@ export function defaultSettings(): Settings {
     clientId: BUILT_IN_CLIENT_ID,
     theme: 'system',
     demoSeeded: false,
+    reminderEvening: '21:30',
+    reminderMorning: '07:20',
   }
 }
 

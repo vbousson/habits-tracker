@@ -17,6 +17,21 @@ describe('splitList', () => {
   })
 })
 
+/**
+ * Build a Config row by column name. Positional fixtures broke the moment a
+ * column was inserted, which is exactly the regression the header-driven parser
+ * exists to prevent — so the tests should not depend on positions either.
+ */
+function configRow(values: Record<string, string>): string[] {
+  const row = Array.from({ length: HEADERS.config.length }, () => '')
+  for (const [name, value] of Object.entries(values)) {
+    const at = (HEADERS.config as readonly string[]).indexOf(name)
+    if (at < 0) throw new Error(`Unknown Config column: ${name}`)
+    row[at] = value
+  }
+  return row
+}
+
 describe('parseMetrics', () => {
   const header = [...HEADERS.config]
 
@@ -43,8 +58,24 @@ describe('parseMetrics', () => {
   })
 
   it('deactivates only on an explicit falsy value', () => {
-    const rows = [header, ['a', 'A', 'bool', '', '', '', '', '', '', '', '', '', '', '', '', 'FALSE']]
+    const rows = [header, configRow({ id: 'a', label: 'A', type: 'bool', active: 'FALSE' })]
     expect(parseMetrics(rows)[0]?.active).toBe(false)
+  })
+
+  it('reads per-option colours', () => {
+    const rows = [
+      header,
+      configRow({
+        id: 'humeur', type: 'scale', options: 'Basse|Bonne',
+        colors: '#c8503c|#2f9e63',
+      }),
+    ]
+    expect(parseMetrics(rows)[0]?.colors).toEqual(['#c8503c', '#2f9e63'])
+  })
+
+  it('accepts the auto mode, for metrics the app fills in itself', () => {
+    const rows = [header, configRow({ id: 'duree', type: 'number', mode: 'auto' })]
+    expect(parseMetrics(rows)[0]?.mode).toBe('auto')
   })
 
   it('defaults an unknown type to bool rather than throwing', () => {

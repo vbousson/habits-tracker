@@ -8,14 +8,15 @@
  * something to show without asking a visitor to sign into Google.
  */
 import {
-  entryToRow, eventToRow, metricToRow, noteToRow,
-  parseEntries, parseEvents, parseMetrics, parseNotes, parseTags,
+  entryToRow, eventToRow, goalToRow, metricToRow, noteToRow,
+  parseEntries, parseEvents, parseGoals, parseMetrics, parseNotes, parseTags,
   HEADERS,
 } from '../../core/tabular'
 import { typeEntries } from '../../core/repository'
 import { starterConfigRows, starterTagRows } from '../../data/starter'
+import { starterGoalRows } from '../../data/starterGoals'
 import type { HabitRepository } from '../../core/repository'
-import type { Entry, ISODate, Metric, Note, Snapshot, TrackedEvent } from '../../core/types'
+import type { Entry, Goal, ISODate, Metric, Note, Snapshot, TrackedEvent } from '../../core/types'
 
 export interface LocalStore {
   config: string[][]
@@ -23,6 +24,7 @@ export interface LocalStore {
   entries: string[][]
   notes: string[][]
   events: string[][]
+  goals: string[][]
 }
 
 export function emptyStore(): LocalStore {
@@ -32,6 +34,7 @@ export function emptyStore(): LocalStore {
     entries: [[...HEADERS.entries]],
     notes: [[...HEADERS.notes]],
     events: [[...HEADERS.events]],
+    goals: starterGoalRows(),
   }
 }
 
@@ -47,6 +50,7 @@ function read(key: string): LocalStore {
       entries: parsed.entries ?? base.entries,
       notes: parsed.notes ?? base.notes,
       events: parsed.events ?? base.events,
+      goals: parsed.goals?.length ? parsed.goals : base.goals,
     }
   } catch {
     // A corrupted or unavailable store must not brick the app.
@@ -84,7 +88,7 @@ export function createLocalRepository(
       const store = read(key)
       const metrics = parseMetrics(store.config)
       return Promise.resolve({
-        config: { metrics, tags: parseTags(store.tags) },
+        config: { metrics, tags: parseTags(store.tags), goals: parseGoals(store.goals) },
         entries: typeEntries(parseEntries(store.entries), metrics),
         notes: parseNotes(store.notes),
         events: parseEvents(store.events),
@@ -133,6 +137,20 @@ export function createLocalRepository(
       return mutate((store) => {
         const [header = [...HEADERS.config], ...body] = store.config
         store.config = [header, ...body.filter((r) => r[0] !== metric.id), metricToRow(metric)]
+      })
+    },
+
+    saveGoal(goal: Goal): Promise<void> {
+      return mutate((store) => {
+        const [header = [...HEADERS.goals], ...body] = store.goals
+        store.goals = [header, ...body.filter((r) => r[0] !== goal.id), goalToRow(goal)]
+      })
+    },
+
+    deleteGoal(id: string): Promise<void> {
+      return mutate((store) => {
+        const [header = [...HEADERS.goals], ...body] = store.goals
+        store.goals = [header, ...body.filter((r) => r[0] !== id)]
       })
     },
   }

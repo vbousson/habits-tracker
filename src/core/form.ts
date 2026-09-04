@@ -73,6 +73,8 @@ function isVisible(
     return isTruthy(parent, answers.get(parent.id) ?? null)
   }
 
+  if (metric.mode === 'auto') return false
+
   if (metric.mode === 'quick') {
     // Never *asked*, but once recorded for the day it belongs in the form so it
     // can be reviewed or corrected — and so its follow-ups are not left orphaned
@@ -121,7 +123,9 @@ export function buildDailyForm(
  * that should never pollute the daily flow but must be one tap away.
  */
 export function quickAddMetrics(config: TrackerConfig): Metric[] {
-  return config.metrics.filter((m) => m.active && (m.mode === 'quick' || m.mode === 'both') && !m.dependsOn)
+  return config.metrics.filter(
+    (m) => m.active && (m.mode === 'quick' || m.mode === 'both') && !m.dependsOn,
+  )
 }
 
 /** The root metric plus whatever its answer has revealed, for the quick-add sheet. */

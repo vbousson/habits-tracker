@@ -13,11 +13,13 @@ import { DashboardScreen } from '../src/ui/screens/DashboardScreen'
 import { JournalScreen } from '../src/ui/screens/JournalScreen'
 import { SettingsScreen } from '../src/ui/screens/SettingsScreen'
 import { TodayScreen } from '../src/ui/screens/TodayScreen'
-import { parseMetrics, parseTags } from '../src/core/tabular'
+import { parseGoals, parseMetrics, parseTags } from '../src/core/tabular'
 import { starterConfigRows, starterTagRows } from '../src/data/starter'
+import { starterGoalRows } from '../src/data/starterGoals'
 import { typeEntries } from '../src/core/repository'
 import { buildDemoStore } from '../src/data/demo'
 import { parseEntries, parseEvents, parseNotes } from '../src/core/tabular'
+import { contrastOf, optionColors, readableOn } from '../src/ui/components/FieldInput'
 import { defaultSettings } from '../src/lib/settings'
 import type { Snapshot } from '../src/core/types'
 import type { TrackerApi } from '../src/lib/useTracker'
@@ -41,19 +43,20 @@ beforeAll(() => {
 
 const metrics = parseMetrics(starterConfigRows())
 const tags = parseTags(starterTagRows())
+const goals = parseGoals(starterGoalRows())
 
 function demoSnapshot(): Snapshot {
   const store = buildDemoStore()
   return {
-    config: { metrics, tags },
+    config: { metrics, tags, goals },
     entries: typeEntries(parseEntries(store.entries), metrics),
     notes: parseNotes(store.notes),
     events: parseEvents(store.events),
   }
 }
 
-const EMPTY: Snapshot = { config: { metrics, tags }, entries: [], notes: [], events: [] }
-const NO_CONFIG: Snapshot = { config: { metrics: [], tags: [] }, entries: [], notes: [], events: [] }
+const EMPTY: Snapshot = { config: { metrics, tags, goals }, entries: [], notes: [], events: [] }
+const NO_CONFIG: Snapshot = { config: { metrics: [], tags: [], goals: [] }, entries: [], notes: [], events: [] }
 
 function tracker(over: Partial<TrackerApi> = {}): TrackerApi {
   return {
@@ -72,6 +75,8 @@ function tracker(over: Partial<TrackerApi> = {}): TrackerApi {
     saveEvent: async () => {},
     deleteEvent: async () => {},
     addMetric: async () => {},
+    saveGoal: async () => {},
+    deleteGoal: async () => {},
     ...over,
   } as unknown as TrackerApi
 }
@@ -141,5 +146,30 @@ describe('the screens say something useful in their empty states', () => {
       expect(html).not.toContain('NaN')
       expect(html).not.toContain('>undefined<')
     }
+  })
+})
+
+describe('coloured answer options stay readable', () => {
+  it('reaches WCAG AA on every ramp colour the starter template ships', () => {
+    const ramps = metrics.flatMap((m) => m.colors)
+    expect(ramps.length).toBeGreaterThan(0)
+    for (const background of ramps) {
+      const foreground = readableOn(background)
+      expect(foreground, background).not.toBeNull()
+      expect(contrastOf(background, foreground!), background).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('derives a full ramp for a scale whose colors column is short or empty', () => {
+    const scale = metrics.find((m) => m.type === 'scale' && m.colors.length === 0)
+    expect(scale).toBeDefined()
+    const derived = optionColors(scale!)
+    expect(derived).toHaveLength(scale!.options.length)
+    for (const color of derived!) expect(readableOn(color)).not.toBeNull()
+  })
+
+  it('leaves bool neutral', () => {
+    const bool = metrics.find((m) => m.type === 'bool')
+    expect(optionColors(bool!)).toBeNull()
   })
 })

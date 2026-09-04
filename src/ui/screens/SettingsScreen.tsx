@@ -9,7 +9,8 @@ import { applyTheme } from '../../lib/settings'
 import { getAccessToken, getAuthState, signIn, signOut } from '../../lib/googleAuth'
 import { createTrackerSpreadsheet, ensureSchema } from '../../adapters/sheets/bootstrap'
 import { spreadsheetUrlOf } from '../../adapters/sheets/sheetsApi'
-import { IconRefresh, IconSheet } from '../components/Icons'
+import { IconDownload, IconRefresh, IconSheet } from '../components/Icons'
+import { buildReminderCalendar, defaultReminderSlots, parseTimeOfDay } from '../../lib/reminders'
 import type { BackendChoice, Settings, ThemeChoice } from '../../lib/settings'
 import type { SettingsScreenProps } from './types'
 
@@ -399,6 +400,66 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
         </>
       )}
 
+      {/* --- Rappels -------------------------------------------------------- */}
+      <section className="card stack stack--tight">
+        <h2 className="section-title">Rappels</h2>
+        <p className="small muted">
+          L'application ne peut pas déclencher de notification toute seule : sans serveur, le
+          navigateur n'a aucun moyen de programmer quoi que ce soit — l'API qui l'aurait permis
+          n'a jamais vu le jour. Ce qui marche partout, iPhone compris, c'est un fichier
+          d'agenda à installer une fois.
+        </p>
+
+        <div className="row row--wrap">
+          <div className="field grow">
+            <label className="field__label" htmlFor="reminder-evening">
+              Le soir
+            </label>
+            <input
+              id="reminder-evening"
+              className="input"
+              type="time"
+              value={settings.reminderEvening}
+              onChange={(e) => onChange({ ...settings, reminderEvening: e.target.value })}
+            />
+            <span className="field__help">Pour la journée qui se termine.</span>
+          </div>
+          <div className="field grow">
+            <label className="field__label" htmlFor="reminder-morning">
+              Le matin
+            </label>
+            <input
+              id="reminder-morning"
+              className="input"
+              type="time"
+              value={settings.reminderMorning}
+              onChange={(e) => onChange({ ...settings, reminderMorning: e.target.value })}
+            />
+            <span className="field__help">Au cas où la veille soit passée à la trappe.</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn--block"
+          disabled={
+            parseTimeOfDay(settings.reminderEvening) === null &&
+            parseTimeOfDay(settings.reminderMorning) === null
+          }
+          onClick={() => downloadReminderCalendar(settings.reminderEvening, settings.reminderMorning)}
+        >
+          <IconDownload size={17} />
+          Télécharger le rappel pour mon agenda
+        </button>
+
+        <p className="tiny faint">
+          Deux événements quotidiens, avec un lien vers l'application. Vide un champ pour
+          désactiver ce rappel. Limite assumée : l'agenda sonnera aussi les soirs déjà remplis —
+          rester silencieux ces jours-là demanderait un serveur, et donc de lui confier
+          l'information de savoir si ta journée est remplie.
+        </p>
+      </section>
+
       {/* --- Apparence ------------------------------------------------------ */}
       <section className="card stack--tight stack">
         <h2 className="section-title">Apparence</h2>
@@ -438,4 +499,24 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
       </section>
     </div>
   )
+}
+
+/**
+ * Hand the calendar file to the platform.
+ *
+ * A blob download rather than a hosted URL, because the file depends on the
+ * user's chosen times and on their time zone, and neither should leave the
+ * device to produce it.
+ */
+function downloadReminderCalendar(evening: string, morning: string): void {
+  const appUrl = window.location.href.split('#')[0] ?? window.location.origin
+  const ics = buildReminderCalendar(defaultReminderSlots(evening, morning, appUrl), appUrl)
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'rappels-suivi.ics'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }

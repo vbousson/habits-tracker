@@ -60,7 +60,7 @@ Two properties are worth defending in review.
 
 **Purity.** No React, no `document`, no `fetch`. That is what lets the tests run
 in milliseconds without a browser, and it is why the same logic can be reused by
-a future export script or a CLI.
+a future CLI.
 
 **No presentation decisions.** `stats.ts` returns `0.73`, never `"73 %"` and
 never a colour.

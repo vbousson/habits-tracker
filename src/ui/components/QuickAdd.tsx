@@ -1,142 +1,141 @@
 /**
- * Quick-add: declaring a rare event without going through the daily form.
+ * Quick-add: declaring a rare event the moment it happens, without going
+ * through the daily form.
  *
- * The root question defaults to "Oui" — the sheet is only ever opened because
- * something happened — and `buildQuickForm` then reveals the follow-ups its
- * answer unlocks, so an urticaria flare-up immediately asks for its intensity
- * and presumed cause.
+ * Three decisions worth knowing about.
  *
- * Answers are held in a local draft and written through `tracker.setValue` on
- * validation, so closing the sheet never leaves a stray "Oui" behind.
+ * **It only ever writes to today.** Asking for the date again was the wrong
+ * question: the button is pressed *because* something is happening now.
+ * Backfilling a past day is still possible — from the day screen, which has its
+ * own date navigation and is the right place for it. The sheet says which day
+ * it lands on, once, so nobody has to wonder.
+ *
+ * **The chooser is always shown**, even with a single quick metric. Skipping it
+ * when there was only one made the feature look hard-wired to that one event,
+ * which is exactly the impression this file exists to remove.
+ *
+ * **Answers are held in a local draft** and written through `tracker.setValue`
+ * only on validation, so opening and cancelling never leaves a stray "Oui"
+ * behind. Saving returns to the chooser rather than closing, because flare-ups
+ * come in pairs more often than the UI used to admit.
  */
 import { useState } from 'react'
 import { buildQuickForm, quickAddMetrics } from '../../core/form'
 import type { Answers } from '../../core/form'
 import { formatDayLong, todayISO } from '../../core/date'
 import { isTruthy } from '../../core/values'
-import type { ISODate, Metric, MetricValue, TrackerConfig } from '../../core/types'
+import type { Metric, MetricValue, Tag, TrackerConfig } from '../../core/types'
 import type { TrackerApi } from '../../lib/useTracker'
 import { FieldInput, dependentIds } from './FieldInput'
 import { Sheet } from './Sheet'
-import { IconChevronLeft } from './Icons'
+import { TagFilter } from './TagFilter'
+import { IconCheck, IconChevronLeft } from './Icons'
 
 export interface QuickAddProps {
   tracker: TrackerApi
   config: TrackerConfig
-  /** Day proposed by default — the day currently shown by the caller. */
-  date: ISODate
   onClose: () => void
 }
 
-interface Draft {
-  rootId: string | null
-  day: ISODate
-  answers: Answers
-}
+/**
+ * Below this many choices the list is already scannable, and a filter that
+ * hides two entries out of three costs more taps than it saves.
+ */
+const FILTER_FROM = 6
 
-export function QuickAdd({ tracker, config, date, onClose }: QuickAddProps) {
+export function QuickAdd({ tracker, config, onClose }: QuickAddProps) {
+  const day = todayISO()
   const roots = quickAddMetrics(config)
-  const [draft, setDraft] = useState<Draft>(() =>
-    start(tracker, config, roots.length === 1 ? roots[0]!.id : null, date),
-  )
 
-  const today = todayISO()
-  const root = draft.rootId ? config.metrics.find((m) => m.id === draft.rootId) : undefined
-  const fields = root ? buildQuickForm(config, draft.answers, root.id) : []
+  const [rootId, setRootId] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Answers>(new Map())
+  const [tag, setTag] = useState<string | null>(null)
+  /** Label of the last saved event — the one-line confirmation. */
+  const [saved, setSaved] = useState<string | null>(null)
+
+  /** Only the tags the choices actually carry: a filter must be able to filter. */
+  const filterTags = config.tags.filter((t) => roots.some((m) => m.tags.includes(t.id)))
+  const showFilter = roots.length >= FILTER_FROM && filterTags.length > 1
+  const activeTag = showFilter && tag !== null && filterTags.some((t) => t.id === tag) ? tag : null
+  const visible = activeTag === null ? roots : roots.filter((m) => m.tags.includes(activeTag))
+
+  const root = rootId === null ? undefined : roots.find((m) => m.id === rootId)
+  const fields = root ? buildQuickForm(config, answers, root.id) : []
+
+  /** Seed from what the day already holds, defaulting a boolean root to "Oui". */
+  const pick = (metric: Metric) => {
+    const seeded: Answers = new Map(tracker.answersFor(day))
+    if (metric.type === 'bool' && (seeded.get(metric.id) ?? null) === null) {
+      seeded.set(metric.id, true)
+    }
+    setAnswers(seeded)
+    setRootId(metric.id)
+    setSaved(null)
+  }
+
+  const backToList = () => {
+    setRootId(null)
+    setAnswers(new Map())
+  }
 
   const change = (metric: Metric, value: MetricValue) => {
-    setDraft((previous) => {
-      const answers: Answers = new Map(previous.answers)
-      answers.set(metric.id, value)
+    setAnswers((previous) => {
+      const next: Answers = new Map(previous)
+      next.set(metric.id, value)
       // A follow-up that is no longer revealed must not keep a hidden answer.
       if (!isTruthy(metric, value)) {
-        for (const id of dependentIds(config.metrics, metric.id)) answers.set(id, null)
+        for (const id of dependentIds(config.metrics, metric.id)) next.set(id, null)
       }
-      return { ...previous, answers }
+      return next
     })
   }
 
   const submit = () => {
-    const stored = tracker.answersFor(draft.day)
-    for (const [id, value] of draft.answers) {
+    if (!root) return
+    const stored = tracker.answersFor(day)
+    for (const [id, value] of answers) {
       const before = stored.get(id) ?? null
-      if ((value ?? null) !== before) tracker.setValue(draft.day, id, value)
+      if ((value ?? null) !== before) tracker.setValue(day, id, value)
     }
-    onClose()
+    setSaved(root.label)
+    backToList()
   }
 
   const footer = root ? (
     <>
-      <button type="button" className="btn" onClick={onClose}>
+      <button type="button" className="btn" onClick={backToList}>
         Annuler
       </button>
       <button type="button" className="btn btn--primary" onClick={submit}>
         Enregistrer
       </button>
     </>
-  ) : undefined
+  ) : (
+    <button type="button" className="btn btn--block" onClick={onClose}>
+      Fermer
+    </button>
+  )
 
   return (
     <Sheet title="Ajout rapide" onClose={onClose} footer={footer}>
-      {!root && (
-        <div className="stack stack--tight">
-          <p className="small muted">Que veux-tu déclarer ?</p>
-          {roots.length === 0 ? (
-            <p className="empty">
-              Aucun indicateur en ajout rapide. Passe un indicateur en mode « quick » dans ta
-              feuille pour le retrouver ici.
-            </p>
-          ) : (
-            <div className="quick-list">
-              {roots.map((metric) => (
-                <button
-                  key={metric.id}
-                  type="button"
-                  className="quick-item"
-                  onClick={() => setDraft(start(tracker, config, metric.id, draft.day))}
-                >
-                  <span className="dot" style={{ background: colorOf(config, metric) }} />
-                  <span className="grow">
-                    <span className="quick-item__label">{metric.label}</span>
-                    {metric.help && <span className="field__help"> {metric.help}</span>}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+      <p className="small muted" style={{ margin: 0 }}>
+        Enregistré sur aujourd'hui, {formatDayLong(day)}. Pour un autre jour, utilise la navigation
+        de l'onglet Aujourd'hui.
+      </p>
+
+      {saved && (
+        <div className="banner banner--ok" role="status">
+          <IconCheck size={18} />
+          <span>« {saved} » enregistré. Tu peux en ajouter un autre.</span>
         </div>
       )}
 
-      {root && (
+      {root ? (
         <>
-          {roots.length > 1 && (
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm"
-              onClick={() => setDraft((previous) => ({ ...previous, rootId: null }))}
-            >
-              <IconChevronLeft size={16} />
-              Changer d'indicateur
-            </button>
-          )}
-
-          <div className="field">
-            <label className="field__label" htmlFor="quick-add-day">
-              Jour
-            </label>
-            <input
-              id="quick-add-day"
-              className="input"
-              type="date"
-              value={draft.day}
-              max={today}
-              onChange={(e) => {
-                const next = e.target.value
-                if (next) setDraft(start(tracker, config, draft.rootId, next))
-              }}
-            />
-            <p className="field__help">{formatDayLong(draft.day)}</p>
-          </div>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={backToList}>
+            <IconChevronLeft size={16} />
+            Changer d'indicateur
+          </button>
 
           <div className="form-section">
             {fields.map((field) => (
@@ -148,30 +147,53 @@ export function QuickAdd({ tracker, config, date, onClose }: QuickAddProps) {
             ))}
           </div>
         </>
+      ) : roots.length === 0 ? (
+        <p className="empty">
+          Aucun indicateur en ajout rapide. Passe un indicateur en mode « quick » dans ta feuille
+          pour le retrouver ici.
+        </p>
+      ) : (
+        <div className="stack stack--tight">
+          <p className="field__label" style={{ margin: 0 }}>
+            Que veux-tu déclarer ?
+          </p>
+
+          {showFilter && <TagFilter tags={filterTags} value={activeTag} onChange={setTag} />}
+
+          {visible.length === 0 ? (
+            <p className="field__help">Aucun indicateur ne porte cette étiquette.</p>
+          ) : (
+            <div className="quick-list">
+              {visible.map((metric) => (
+                <button
+                  key={metric.id}
+                  type="button"
+                  className="quick-item"
+                  onClick={() => pick(metric)}
+                >
+                  <span className="grow">
+                    <span className="quick-item__label">{metric.label}</span>
+                    <span className="field__help">{metric.group}</span>
+                  </span>
+                  <TagDots ids={metric.tags} tags={config.tags} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </Sheet>
   )
 }
 
-/** Seed the draft from what the day already holds, defaulting a boolean root to "Oui". */
-function start(
-  tracker: TrackerApi,
-  config: TrackerConfig,
-  rootId: string | null,
-  day: ISODate,
-): Draft {
-  const answers: Answers = new Map(tracker.answersFor(day))
-  if (rootId) {
-    const root = config.metrics.find((m) => m.id === rootId)
-    if (root && root.type === 'bool' && (answers.get(rootId) ?? null) === null) {
-      answers.set(rootId, true)
-    }
-  }
-  return { rootId, day, answers }
-}
-
-function colorOf(config: TrackerConfig, metric: Metric): string {
-  if (metric.color) return metric.color
-  const tag = config.tags.find((t) => metric.tags.includes(t.id))
-  return tag?.color ?? 'var(--accent)'
+function TagDots({ ids, tags }: { ids: string[]; tags: Tag[] }) {
+  const found = ids.map((id) => tags.find((t) => t.id === id)).filter((t): t is Tag => !!t)
+  if (found.length === 0) return null
+  return (
+    <span className="dots">
+      {found.map((tag) => (
+        <span key={tag.id} className="dot" style={{ background: tag.color }} title={tag.label} />
+      ))}
+    </span>
+  )
 }

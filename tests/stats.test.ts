@@ -9,7 +9,7 @@ const sport = metric({ id: 'sport', tags: ['sport'] })
 const energie = metric({ id: 'energie', type: 'scale', options: ['Faible', 'Moyen', 'Bon'], tags: ['forme'] })
 const urticaire = metric({ id: 'urticaire', tags: ['sante'], mode: 'quick', schedule: parseSchedule('never') })
 
-const config: TrackerConfig = { tags: [], metrics: [velo, sport, energie, urticaire] }
+const config: TrackerConfig = { tags: [], goals: [], metrics: [velo, sport, energie, urticaire] }
 
 // 2026-08-31 is a Monday, so this window is exactly one Mon→Sun week.
 const WEEK = { from: '2026-08-31', to: '2026-09-06' }

@@ -1,4 +1,4 @@
-import type { Entry, ISODate, Metric, Note, Snapshot, TrackedEvent } from './types'
+import type { Entry, Goal, ISODate, Metric, Note, Snapshot, TrackedEvent } from './types'
 import { parseValue } from './values'
 
 /**
@@ -34,23 +34,52 @@ export interface HabitRepository {
 
   /** Promote a recurring note into a first-class tracked metric. */
   addMetric(metric: Metric): Promise<void>
+
+  /**
+   * Upsert a goal by id.
+   *
+   * Raising or lowering a target is *not* an update of the existing row: the
+   * caller closes the current goal with a `to` date and saves a new one, so the
+   * history of what the bar used to be survives.
+   */
+  saveGoal(goal: Goal): Promise<void>
+  deleteGoal(id: string): Promise<void>
 }
 
 export type RepositoryKind = 'local' | 'sheets'
 
 /**
  * Backends read cells as strings. This applies the per-metric typing once the
- * config is known, and drops entries whose metric no longer exists.
+ * config is known, drops entries whose metric no longer exists, and — the part
+ * that matters — reduces the raw rows to the *effective* answer per day.
+ *
+ * A remote backend records a correction by appending a new row rather than by
+ * rewriting the old one, because rewriting means re-uploading the whole tab on
+ * every keystroke. So the same `(date, metricId)` can legitimately appear
+ * several times, and the last occurrence is the truth. An appended row with an
+ * empty value is a *tombstone*: the answer was cleared.
+ *
+ * Collapsing here, once, is deliberate. The alternative is that every consumer
+ * deduplicates — `bucketSeries`, the goals engine, and every aggregation not
+ * written yet — and sooner or later one of them forgets and quietly
+ * double-counts a corrected day.
  */
 export function typeEntries(raw: Entry[], metrics: Metric[]): Entry[] {
   const byId = new Map(metrics.map((m) => [m.id, m]))
-  const typed: Entry[] = []
+  const effective = new Map<string, Entry>()
+
   for (const e of raw) {
     const metric = byId.get(e.metricId)
     if (!metric) continue
-    typed.push({ ...e, value: parseValue(metric, String(e.value ?? '')) })
+    // `Map.set` on an existing key keeps its original position, so the natural
+    // chronological order of the sheet survives while the value is updated.
+    effective.set(`${e.date}\u0000${e.metricId}`, {
+      ...e,
+      value: parseValue(metric, String(e.value ?? '')),
+    })
   }
-  return typed
+
+  return [...effective.values()].filter((e) => e.value !== null && e.value !== '')
 }
 
 /** Index a snapshot's entries as `date -> metricId -> value`, for O(1) lookups. */
