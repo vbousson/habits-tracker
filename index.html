@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      viewport-fit=cover is load-bearing: src/ui/styles.css positions the bottom
+      navigation with env(safe-area-inset-bottom), which stays 0 without it and
+      leaves the nav under the iOS home indicator.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <title>Habits Tracker — suivi d'habitudes et de santé</title>
+    <meta
+      name="description"
+      content="Suivi d'habitudes et de santé, configurable de bout en bout, dont les données restent dans votre propre Google Sheet. Aucun serveur, aucune télémétrie."
+    />
+
+    <!--
+      All asset paths below go through Vite's %BASE_URL% placeholder. Hard-coded
+      absolute paths ("/icons/...") break as soon as the app is served from a
+      project sub-path such as https://vbousson.github.io/habits-tracker/.
+    -->
+    <link rel="icon" href="%BASE_URL%icons/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="%BASE_URL%icons/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+
+    <!-- Matches --bg in src/ui/styles.css, light and dark. -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#10151d" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Standalone behaviour when added to the iOS home screen. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Habits" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!--
+      Open Graph needs absolute URLs — crawlers do not resolve them against the
+      page. These point at the reference deployment; a fork that wants correct
+      link previews should swap in its own origin.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Habits Tracker" />
+    <meta property="og:title" content="Habits Tracker — suivi d'habitudes et de santé" />
+    <meta
+      property="og:description"
+      content="Suivi d'habitudes et de santé, configurable de bout en bout, dont les données restent dans votre propre Google Sheet."
+    />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:url" content="https://vbousson.github.io/habits-tracker/" />
+    <meta property="og:image" content="https://vbousson.github.io/habits-tracker/icons/icon-512.png" />
+    <meta property="og:image:alt" content="Logo de Habits Tracker" />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <p style="max-width: 34rem; margin: 3rem auto; padding: 0 1.25rem; font: 16px/1.6 system-ui, sans-serif">
+        Habits Tracker a besoin de JavaScript pour fonctionner : toute l'application
+        s'exécute dans votre navigateur, il n'y a pas de serveur qui pourrait
+        afficher les pages à sa place. Activez JavaScript, puis rechargez la page.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

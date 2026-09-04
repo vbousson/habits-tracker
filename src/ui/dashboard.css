@@ -1,0 +1,428 @@
+/* ---------------------------------------------------------------------------
+   Dashboard-specific styles.
+
+   Every colour comes from the tokens declared in styles.css, so the charts
+   follow the light/dark theme automatically. The single exception is the
+   `@media print` block at the bottom: a medical hand-out is printed black on
+   white whatever the screen theme happens to be.
+   --------------------------------------------------------------------------- */
+
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+/* --- Range + tag filter bar ----------------------------------------------- */
+
+.dash__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tagfilter {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tagfilter::-webkit-scrollbar { display: none; }
+.tagfilter .chip { flex: none; }
+
+/* --- Résumé --------------------------------------------------------------- */
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.summary__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 11px 13px;
+  background: var(--surface);
+}
+
+.summary__label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.summary__value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__sub {
+  font-size: 0.73rem;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 620px) {
+  .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* --- Heatmap -------------------------------------------------------------- */
+
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heatmap__body {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.heatmap__gutter {
+  flex: none;
+  display: grid;
+  gap: var(--hm-gap);
+  grid-template-rows: repeat(7, var(--hm-cell));
+  /* Line the gutter up with the day rows: the grid's first row is the months. */
+  padding-top: calc(var(--hm-month-h) + var(--hm-gap));
+}
+
+.heatmap__gutter-label {
+  display: flex;
+  align-items: center;
+  height: var(--hm-cell);
+  font-size: 0.62rem;
+  line-height: 1;
+  color: var(--text-faint);
+}
+
+.heatmap__scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.heatmap__grid {
+  display: grid;
+  gap: var(--hm-gap);
+  /* Row 1 is the month strip, rows 2-8 are Monday…Sunday. Sizing it explicitly
+     is what keeps the weekday gutter lined up with the cells. */
+  grid-template-rows: var(--hm-month-h) repeat(7, var(--hm-cell));
+  width: max-content;
+  margin: 0 auto;
+}
+
+.heatmap__month {
+  grid-row: 1;
+  height: var(--hm-month-h);
+  line-height: var(--hm-month-h);
+  font-size: 0.62rem;
+  white-space: nowrap;
+  color: var(--text-faint);
+}
+
+.heatmap__cell {
+  width: var(--hm-cell);
+  height: var(--hm-cell);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: var(--surface-2);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* "Not recorded" must never be mistaken for "recorded as bad": no fill at all,
+   and a dashed outline instead of a solid one. */
+.heatmap__cell--empty {
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+
+.heatmap__cell[aria-pressed='true'] {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.heatmap__cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.heatmap__spacer {
+  width: var(--hm-cell);
+  height: var(--hm-cell);
+}
+
+.heatmap__legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+
+.heatmap__legend-sep { flex: 1; min-width: 8px; }
+
+.heatmap__swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  flex: none;
+}
+
+.heatmap__swatch--empty {
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+
+.heatmap__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.heatmap__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heatmap__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.84rem;
+}
+
+.heatmap__row dt { color: var(--text-dim); min-width: 0; }
+.heatmap__row dd { margin: 0; font-weight: 600; text-align: right; }
+
+/* --- Trend chart ---------------------------------------------------------- */
+
+.trend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trend__readout {
+  min-height: 1.15em;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.trend__hit { fill: transparent; cursor: pointer; }
+
+/* --- Per-metric cards ----------------------------------------------------- */
+
+.statcard {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.statcard__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statcard__title {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.dots { display: inline-flex; gap: 3px; flex: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.statcard__figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.statcard__value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Neutral on purpose — see the comment in MetricStatCard.tsx. */
+.statcard__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.dist { display: flex; flex-direction: column; gap: 4px; }
+
+.dist__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.77rem;
+}
+
+.dist__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.dist__bar { height: 100%; border-radius: 999px; }
+.dist__count { text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* --- Export --------------------------------------------------------------- */
+
+.export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.export__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.export__meta {
+  display: grid;
+  gap: 2px;
+  font-size: 0.83rem;
+  color: var(--text-dim);
+}
+
+.export__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.export__table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 460px;
+  font-size: 0.78rem;
+}
+
+.export__table th,
+.export__table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.export__table th {
+  background: var(--surface-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.export__table td.numeric { text-align: right; }
+.export__table caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: 6px;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+}
+
+.export__notes { display: flex; flex-direction: column; gap: 10px; }
+.export__note { display: flex; flex-direction: column; gap: 2px; font-size: 0.84rem; }
+.export__note-date { font-size: 0.72rem; font-weight: 700; color: var(--text-dim); }
+
+/* --- Print ---------------------------------------------------------------- */
+
+@page { margin: 14mm; }
+
+@media print {
+  /* Scoped to pages that are actually showing the export, so printing any other
+     screen keeps its normal chrome. */
+  body:has(.export) { background: #fff; color: #000; }
+  body:has(.export) .app { background: #fff; max-width: none; }
+  body:has(.export) .app__header,
+  body:has(.export) .app__nav { display: none !important; }
+  body:has(.export) .app__main { padding: 0; gap: 0; }
+
+  .export { gap: 14px; color: #000; }
+  .export__toolbar { display: none !important; }
+  .export .card {
+    background: #fff;
+    border: 0;
+    box-shadow: none;
+    padding: 0 0 10px;
+    break-inside: auto;
+  }
+  .export .muted,
+  .export .faint,
+  .export__meta,
+  .export__note-date { color: #333; }
+  .export__scroll { overflow: visible; }
+  .export__table { min-width: 0; font-size: 10pt; }
+  .export__table th,
+  .export__table td { border-color: #666; }
+  .export__table th { background: #eee; color: #000; }
+  .export__table thead { display: table-header-group; }
+  .export__table tr { break-inside: avoid; }
+  .export__section { break-inside: auto; }
+  .export__section + .export__section { break-before: auto; }
+}

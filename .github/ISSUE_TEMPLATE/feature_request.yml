@@ -1,0 +1,67 @@
+name: Feature request
+description: Suggest a capability the tracker does not have yet.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing: a lot of what looks like a missing feature is really a
+        configuration question. Metrics, groups, schedules, dependent follow-up
+        questions and tags all live in your spreadsheet's `Config` tab, not in
+        the code — see [docs/DATA_MODEL.md](../blob/main/docs/DATA_MODEL.md).
+        Have a look at [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) too; it may
+        already be planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >-
+        What are you trying to do that the app makes hard or impossible? Describe
+        the situation, not the solution — it is much easier to find a good design
+        from a real problem than from a proposed feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: Your idea of a solution, if you have one.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: >-
+        Config rows, a `depends_on` follow-up, a tag, a note — whatever you
+        already attempted and why it fell short.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app
+      options:
+        - Daily form / quick add
+        - Journal (notes, events)
+        - Dashboard / statistics
+        - Configuration and metric types
+        - Google Sheets backend
+        - A new storage backend
+        - Settings, theme, PWA, offline
+        - Something else
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and the roadmap.
+          required: true
+        - label: >-
+            I understand this is a small personal project and that a feature may
+            be declined for scope reasons.
+          required: true

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.vite/
+
+# Local Claude Code settings (personal, not shared)
+.claude/settings.local.json

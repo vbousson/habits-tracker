@@ -1,0 +1,78 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; never cancel one in flight, or Pages can be left
+# serving a half-uploaded artefact.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          # The site is served from https://<owner>.github.io/<repo>/, so every
+          # asset URL has to be prefixed with the repository name. vite.config.ts
+          # reads this variable. Getting it wrong produces a blank page with 404s
+          # on the JS bundle and nothing in the UI to explain why.
+          BASE_PATH: /${{ github.event.repository.name }}/
+          # Optional. When the secret is not set the build still succeeds and the
+          # app asks for a client id in its Settings screen instead — the demo
+          # (local backend) works without Google at all.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Add SPA fallback
+        # GitHub Pages serves static files only: it has no rewrite rule sending
+        # unknown paths to index.html. Without this copy, refreshing on any route
+        # other than the root returns the GitHub 404 page.
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

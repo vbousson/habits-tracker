@@ -1,0 +1,8 @@
+# habits-tracker — https://github.com/vbousson/habits-tracker
+#
+# The app is a public, static demo shell: it holds no user content of its own.
+# Everything a visitor records lives in their own browser or their own Google
+# Drive, and is never served from here, so there is nothing to keep crawlers out
+# of.
+User-agent: *
+Allow: /

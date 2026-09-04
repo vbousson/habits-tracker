@@ -1,0 +1,294 @@
+/* ---------------------------------------------------------------------------
+   Form, sheet and journal styles.
+   Everything here builds on the tokens declared in styles.css — no raw colour
+   is introduced that does not derive from one of them.
+   --------------------------------------------------------------------------- */
+
+/* Leaves room under the last card for the floating action button. */
+.screen { padding-bottom: 60px; }
+
+/* --- Day navigation ------------------------------------------------------- */
+
+.day-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+}
+
+.day-nav__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: var(--tap);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.day-nav__label:hover { background: var(--surface-2); }
+.day-nav__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.day-nav__rel {
+  display: block;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.day-nav__rel::first-letter { text-transform: uppercase; }
+.day-nav__date { display: block; }
+
+/* --- Save indicator ------------------------------------------------------- */
+
+.savestate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.savestate--ok { color: var(--good); }
+.savestate .spinner { width: 13px; height: 13px; border-width: 2px; }
+
+/* --- Fields --------------------------------------------------------------- */
+
+.form-section { display: flex; flex-direction: column; gap: 18px; }
+
+.field__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.field__label { flex: 1; min-width: 0; }
+
+.field__check { display: inline-flex; color: var(--good); flex: none; }
+
+.field__clear {
+  flex: none;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.field__clear:hover { background: var(--surface-2); color: var(--text-dim); }
+.field__clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* A follow-up question revealed by its parent's answer. */
+.field--child {
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+/* Not answered yet — deliberately different from an answered "Non". */
+.segmented[data-answered='false'],
+.chips[data-answered='false'] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--text-faint) 45%, var(--border));
+}
+
+/* Fainter labels while nothing is chosen, so an answered "Non" reads darker
+   than an untouched control even at a glance. */
+.segmented[data-answered='false'] .segmented__opt,
+.chips[data-answered='false'] .chip {
+  color: var(--text-faint);
+}
+
+.segmented--wrap { flex-wrap: wrap; }
+
+.segmented--wrap .segmented__opt {
+  flex: 1 0 auto;
+  min-width: 78px;
+  padding: 6px 10px;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.chips--plain {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.chip { min-height: 36px; }
+.chip[aria-pressed='true'] { background: var(--accent); }
+
+.affix { display: flex; align-items: center; gap: 8px; }
+.affix .input { flex: 1; min-width: 0; }
+.affix__unit { flex: none; color: var(--text-dim); font-size: 0.85rem; font-weight: 600; }
+
+/* --- Floating action button ----------------------------------------------- */
+
+.fab {
+  position: fixed;
+  right: max(var(--space), calc(50% - 360px + var(--space)));
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 9;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.fab:active { transform: scale(0.97); }
+.fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* --- Bottom sheet --------------------------------------------------------- */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+}
+
+.sheet__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  max-height: 88vh;
+  max-height: 88dvh;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  animation: sheet-in 0.18s ease-out;
+}
+
+.sheet__panel:focus { outline: none; }
+
+@keyframes sheet-in {
+  from { transform: translateY(16px); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px var(--space);
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  padding: var(--space);
+}
+
+.sheet__foot {
+  display: flex;
+  gap: 8px;
+  padding: 12px var(--space) calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+}
+
+.sheet__foot .btn { flex: 1; }
+
+/* --- Quick add ------------------------------------------------------------ */
+
+.quick-list { display: flex; flex-direction: column; gap: 8px; }
+
+.quick-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-item:hover { background: var(--surface-2); }
+.quick-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quick-item__label { display: block; font-weight: 600; }
+.quick-item .field__help { display: block; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+/* --- Journal -------------------------------------------------------------- */
+
+.day-group { display: flex; flex-direction: column; gap: 8px; }
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px var(--space);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.entry__text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.entry__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.entry__actions .btn { min-height: 34px; }
+
+.tagmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.71rem;
+  font-weight: 700;
+}

@@ -1,0 +1,19 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/vbousson/habits-tracker/discussions
+    about: >-
+      Setup help, "how do I configure X", or an idea that is not yet a concrete
+      feature request. Discussions are the right place for anything open-ended.
+
+  - name: Setting up your Google Sheet
+    url: https://github.com/vbousson/habits-tracker/blob/main/docs/GOOGLE_SETUP.md
+    about: Step-by-step guide to the Google Cloud project, the OAuth client and your spreadsheet.
+
+  - name: Deployment problems
+    url: https://github.com/vbousson/habits-tracker/blob/main/docs/DEPLOYMENT.md
+    about: Blank page, 404 on refresh, stale version — the troubleshooting section covers all three.
+
+  - name: Report a security vulnerability
+    url: https://github.com/vbousson/habits-tracker/security/advisories/new
+    about: Please report privately, never as a public issue. See SECURITY.md.
