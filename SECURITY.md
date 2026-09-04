@@ -23,11 +23,8 @@ Two channels, either is fine:
 1. **GitHub private vulnerability reporting** — the preferred one:
    [open a draft advisory](https://github.com/vbousson/habits-tracker/security/advisories/new).
    It keeps the discussion, the fix and the eventual disclosure in one place.
-2. **Direct message** — [@vbousson](https://github.com/vbousson) on GitHub, if
-   the advisory flow is not available to you.
-
-<!-- Maintainer: add a personal contact address here if you want one. A work
-     address does not belong in a public personal repository. -->
+2. **Email** — [valentin@bousson.com](mailto:valentin@bousson.com), if the
+   advisory flow is not available to you.
 
 Useful things to include: what an attacker gains, the steps to reproduce, the
 affected version or commit, and the browser you saw it in. A proof of concept is

@@ -196,8 +196,8 @@ npm run preview      # serve the built dist/
 To deploy your fork to GitHub Pages: enable Pages with **Source: GitHub Actions**,
 push to `main`, and the shipped workflow does the rest. Two details decide whether
 it works — the base path and the SPA fallback — and both are handled for you and
-explained in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**, along with GitLab Pages
-and plain static hosting.
+explained in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**, along with plain
+static hosting.
 
 ## Configuring your metrics
 
@@ -334,7 +334,7 @@ This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | The layers, the `HabitRepository` seam, one answer traced end to end, how to add a backend or a field type. |
 | [DATA_MODEL.md](docs/DATA_MODEL.md) | Every tab, every column, every accepted value. The authoritative reference. |
 | [GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) | Google Cloud project, OAuth client, your spreadsheet. |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages, GitLab Pages, any static host, and what to do when it 404s. |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages, any static host, and what to do when it 404s. |
 | [ROADMAP.md](docs/ROADMAP.md) | What is done, what is planned, and what is deliberately not. |
 | [CHANGELOG.md](CHANGELOG.md) | Notable changes, [Keep a Changelog](https://keepachangelog.com/) format. |
 

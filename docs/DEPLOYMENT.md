@@ -1,16 +1,15 @@
 # Deployment
 
 The app is a folder of static files. Anything that can serve a directory over
-HTTPS can host it: GitHub Pages, GitLab Pages, Netlify, an S3 bucket, an nginx
+HTTPS can host it: GitHub Pages, Netlify, an S3 bucket, an nginx
 you already run. There is no server component and nothing to configure at
 runtime.
 
 Two details decide whether it works or silently 404s, and both are covered below:
 the **base path** and the **SPA fallback**.
 
-- [GitHub Pages](#github-pages-the-primary-target) — the primary target
+- [GitHub Pages](#github-pages)
 - [Custom domain](#custom-domain)
-- [GitLab Pages](#gitlab-pages)
 - [Any static host](#any-static-host)
 - [Service worker registration](#service-worker-registration)
 - [Troubleshooting](#troubleshooting)
@@ -59,12 +58,12 @@ The fix is one line, run after the build:
 cp dist/index.html dist/404.html
 ```
 
-GitHub Pages and GitLab Pages both serve `404.html` for unmatched paths, which
+GitHub Pages serves `404.html` for unmatched paths, which
 makes it a serviceable SPA fallback. Both shipped pipelines already do this.
 
 ---
 
-## GitHub Pages (the primary target)
+## GitHub Pages
 
 [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) does the whole
 job: build with the right `BASE_PATH`, copy the fallback, upload, deploy. It runs
@@ -122,28 +121,6 @@ becomes `/`.
 6. Update the Open Graph `og:url` and `og:image` in
    [`index.html`](../index.html), which are absolute by necessity — crawlers do
    not resolve relative URLs.
-
----
-
-## GitLab Pages
-
-[`.gitlab-ci.yml`](../.gitlab-ci.yml) is the equivalent pipeline, kept in the
-repository so the project can be mirrored to GitLab without changing a line of
-source. It derives `BASE_PATH` from `$CI_PAGES_URL`, so it is correct for both a
-project site (`https://<group>.gitlab.io/<project>/`) and a user or group site
-served from the domain root.
-
-Two GitLab-specific wrinkles:
-
-- GitLab Pages publishes the **`public/` directory**, which is also Vite's static
-  asset folder in this repository. The pipeline therefore replaces `public/` with
-  the build output as its last step. On GitLab 17.9 and later you can instead
-  declare `pages: publish: dist` and drop those two lines.
-- Set `VITE_GOOGLE_CLIENT_ID` under **Settings** → **CI/CD** → **Variables** if
-  you want it baked in.
-
-Then, as with GitHub: add the resulting origin to your OAuth client's authorised
-JavaScript origins.
 
 ---
 

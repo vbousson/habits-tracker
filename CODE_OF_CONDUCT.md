@@ -60,13 +60,8 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-[@vbousson](https://github.com/vbousson) — by
-[opening a private security advisory](https://github.com/vbousson/habits-tracker/security/advisories/new),
-which is the only private channel this repository offers, or by direct message.
+[valentin@bousson.com](mailto:valentin@bousson.com).
 All complaints will be reviewed and investigated promptly and fairly.
-
-<!-- Maintainer: if you would rather be reachable by email, put a personal
-     address here. Do not use a work address on a personal project. -->
 
 All community leaders are obligated to respect the privacy and security of the
 reporter of any incident.

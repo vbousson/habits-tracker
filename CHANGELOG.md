@@ -63,8 +63,7 @@ planned.
   `googleapis.com` or `accounts.google.com`.
 - **Project infrastructure** — MIT licence, contributing guide, code of conduct,
   security policy, issue and pull-request templates, Dependabot, CI on every push
-  and pull request, and deployment to GitHub Pages (with a GitLab Pages
-  equivalent).
+  and pull request, and deployment to GitHub Pages.
 - **Documentation** — architecture, data model, Google setup, deployment and
   roadmap, under `docs/`.
 

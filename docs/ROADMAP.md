@@ -39,8 +39,7 @@ survive the next four lots.
       700 ms debounce, flush on tab hide, rollback on failure).
 - [x] PWA shell: manifest, icons, hand-written service worker that never touches
       Google's origins.
-- [x] CI on every push and pull request; deployment to GitHub Pages, with a
-      GitLab Pages equivalent.
+- [x] CI on every push and pull request; deployment to GitHub Pages.
 - [x] Project documentation and community files.
 - [x] Unit tests for the domain core: `date`, `values`, `schedule`, `tabular`,
       `form`, `stats` and the local backend.
