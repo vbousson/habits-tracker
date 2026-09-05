@@ -4,20 +4,23 @@
  * This screen is the only place that talks to `googleAuth` and `bootstrap`
  * directly: everywhere else, data access goes through the repository.
  */
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { applyTheme } from '../../lib/settings'
 import { getAccessToken, getAuthState, signIn, signOut } from '../../lib/googleAuth'
 import { createTrackerSpreadsheet, ensureSchema } from '../../adapters/sheets/bootstrap'
 import { spreadsheetUrlOf } from '../../adapters/sheets/sheetsApi'
 import { IconDownload, IconRefresh, IconSheet } from '../components/Icons'
 import { buildReminderCalendar, defaultReminderSlots, parseTimeOfDay } from '../../lib/reminders'
+import { disablePush, enablePush, getPushState, pushFacts, syncPushState } from '../../lib/push'
+import { todayISO } from '../../core/date'
+import type { PushState } from '../../lib/push'
 import type { BackendChoice, Settings, ThemeChoice } from '../../lib/settings'
 import type { SettingsScreenProps } from './types'
 
 const REPO_URL = 'https://github.com/vbousson/habits-tracker'
 const SETUP_DOC_URL = `${REPO_URL}/blob/main/docs/GOOGLE_SETUP.md`
 
-type Busy = null | 'signin' | 'create' | 'repair' | 'reload'
+type Busy = null | 'signin' | 'create' | 'repair' | 'reload' | 'push'
 
 const BACKENDS: { value: BackendChoice; label: string }[] = [
   { value: 'local', label: 'Cet appareil (démo)' },
@@ -38,8 +41,11 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
   const [auth, setAuth] = useState(() => getAuthState(settings.clientId))
   const [clientIdDraft, setClientIdDraft] = useState(settings.clientId)
   const [sheetIdDraft, setSheetIdDraft] = useState(settings.spreadsheetId)
-  const [sheetTitle, setSheetTitle] = useState('Habits Tracker')
+  const [sheetTitle, setSheetTitle] = useState('MyHabits')
   const [editingSheetId, setEditingSheetId] = useState(false)
+  // `null` until the browser has been asked. Reading the Push API during render
+  // would break the server-rendered smoke tests, which have no `navigator`.
+  const [push, setPush] = useState<PushState | null>(null)
 
   const clientId = settings.clientId.trim()
   const connected = auth.connected
@@ -107,6 +113,49 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
     run('reload', async () => {
       await tracker.reload()
       return 'Données rechargées.'
+    })
+
+  // --- Rappels push ---------------------------------------------------------
+
+  useEffect(() => {
+    let alive = true
+    void getPushState().then((state) => {
+      if (alive) setPush(state)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  /** The two derived facts the reminder service is told. Nothing else. */
+  const facts = useMemo(() => {
+    const snapshot = tracker.snapshot
+    if (!snapshot) return null
+    return pushFacts(snapshot.config, snapshot.entries)
+  }, [tracker.snapshot])
+
+  const tokenSource = useCallback(() => getAccessToken(clientId), [clientId])
+
+  // Keep the server's picture current. `syncPushState` debounces and drops
+  // no-op updates, so an effect that re-runs on every tap is not a request per
+  // tap. See the note in the report about wiring the same call at app level.
+  useEffect(() => {
+    if (!facts) return
+    syncPushState(tokenSource, settings, facts)
+  }, [facts, settings, tokenSource])
+
+  const handlePushToggle = () =>
+    run('push', async () => {
+      if (push?.subscribed) {
+        await disablePush(tokenSource)
+        update({ pushEnabled: false })
+        setPush(await getPushState())
+        return 'Notifications désactivées sur cet appareil.'
+      }
+      await enablePush(tokenSource, settings, facts ?? { lastFilled: todayISO(), pendingDays: 0 })
+      update({ pushEnabled: true })
+      setPush(await getPushState())
+      return 'Notifications activées. Le prochain rappel utile arrivera à l’heure choisie.'
     })
 
   return (
@@ -404,10 +453,8 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
       <section className="card stack stack--tight">
         <h2 className="section-title">Rappels</h2>
         <p className="small muted">
-          L'application ne peut pas déclencher de notification toute seule : sans serveur, le
-          navigateur n'a aucun moyen de programmer quoi que ce soit — l'API qui l'aurait permis
-          n'a jamais vu le jour. Ce qui marche partout, iPhone compris, c'est un fichier
-          d'agenda à installer une fois.
+          Deux rappels : le soir pour la journée qui se termine, le matin si la veille est passée
+          à la trappe. Les deux restent silencieux quand il n'y a rien à remplir.
         </p>
 
         <div className="row row--wrap">
@@ -439,6 +486,46 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
           </div>
         </div>
 
+        <hr className="divider" />
+
+        <div className="row row--between">
+          <h3 className="section-title">Notifications</h3>
+          <span className="badge">
+            {push === null ? '…' : push.subscribed ? 'Activées' : 'Non activées'}
+          </span>
+        </div>
+
+        {push?.reason && <p className="small muted">{push.reason}</p>}
+
+        {push !== null && !push.blocker && (
+          <>
+            <button
+              type="button"
+              className={push.subscribed ? 'btn btn--block' : 'btn btn--primary btn--block'}
+              onClick={handlePushToggle}
+              disabled={busy !== null || !clientId}
+            >
+              {busy === 'push' && <span className="spinner" />}
+              {push.subscribed ? 'Désactiver les notifications' : 'Activer les notifications'}
+            </button>
+            {!clientId && (
+              <p className="small muted">
+                Renseigne d'abord l'identifiant client Google : le service de rappel vérifie que
+                c'est bien toi qui l'appelles, et il a besoin de ton jeton Google pour cela.
+              </p>
+            )}
+            <p className="tiny faint">
+              Ce qui part vers le service de rappel : l'abonnement du navigateur, tes deux heures,
+              ton fuseau horaire, la date du dernier jour rempli et le nombre de journées en
+              attente. Aucun nom de mesure, aucune valeur, aucune réponse — voir{' '}
+              <code>docs/adr/0002-reminders.md</code>.
+            </p>
+          </>
+        )}
+
+        <hr className="divider" />
+
+        <h3 className="section-title">Agenda (solution de repli)</h3>
         <button
           type="button"
           className="btn btn--block"
@@ -454,9 +541,8 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
 
         <p className="tiny faint">
           Deux événements quotidiens, avec un lien vers l'application. Vide un champ pour
-          désactiver ce rappel. Limite assumée : l'agenda sonnera aussi les soirs déjà remplis —
-          rester silencieux ces jours-là demanderait un serveur, et donc de lui confier
-          l'information de savoir si ta journée est remplie.
+          désactiver ce rappel. Utile là où les notifications ne passent pas. Limite assumée :
+          l'agenda sonnera aussi les soirs déjà remplis, puisque rien ne lui dit où tu en es.
         </p>
       </section>
 
@@ -488,7 +574,7 @@ export function SettingsScreen({ tracker, settings, onChange }: SettingsScreenPr
       <section className="card stack--tight stack">
         <h2 className="section-title">À propos</h2>
         <p className="small muted">
-          Habits Tracker — un suivi d’habitudes libre et sans serveur : tes données restent chez toi,
+          MyHabits — un suivi d’habitudes libre et sans serveur : tes données restent chez toi,
           dans ton navigateur ou dans ton propre Google Drive.
         </p>
         <p className="small">

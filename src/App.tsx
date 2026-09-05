@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createRepository } from './lib/backend'
 import { applyTheme, loadSettings, saveSettings } from './lib/settings'
 import { useTracker } from './lib/useTracker'
+import { pushFacts, syncPushState } from './lib/push'
+import { getAccessToken } from './lib/googleAuth'
 import { buildDemoStore } from './data/demo'
 import { createLocalRepository } from './adapters/local/localRepository'
 import { DashboardScreen } from './ui/screens/DashboardScreen'
@@ -65,6 +67,25 @@ export default function App() {
   )
 
   const tracker = useTracker(repo)
+
+  /**
+   * Keep the reminder server's view of what is still unfilled up to date.
+   *
+   * It receives two derived numbers and nothing else — see the 2026-09 amendment
+   * in `docs/adr/0002-reminders.md`. `syncPushState` debounces and drops
+   * unchanged bodies, so running this on every snapshot change is cheap; doing
+   * it here rather than only in Settings is what stops the evening reminder
+   * firing on a day that was filled from another device.
+   */
+  const facts = useMemo(
+    () => (tracker.snapshot ? pushFacts(tracker.snapshot.config, tracker.snapshot.entries) : null),
+    [tracker.snapshot],
+  )
+
+  useEffect(() => {
+    if (facts) syncPushState(() => getAccessToken(settings.clientId), settings, facts)
+  }, [facts, settings])
+
   const active = TABS.find((t) => t.id === screen) ?? TABS[0]!
 
   return (

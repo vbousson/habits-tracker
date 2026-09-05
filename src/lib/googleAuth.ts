@@ -25,8 +25,26 @@
  * Google, not because the file is missing but because this app is not allowed to
  * see it. The fix is always the same — let the app create the spreadsheet. The
  * Settings screen says so in French, and `docs/GOOGLE_SETUP.md` documents it.
+ *
+ * ---------------------------------------------------------------------------
+ * Why `openid email` is in there too
+ * ---------------------------------------------------------------------------
+ * The push reminder service (`src/lib/push.ts`, `server/`) authenticates the
+ * caller by handing this very access token to Google's tokeninfo endpoint and
+ * requiring the returned `email` to be the allow-listed address. Without the
+ * `email` scope tokeninfo returns no email, and the server can only tell *that*
+ * a token is valid, not *whose* it is.
+ *
+ * Both `openid` and `email` are NON-SENSITIVE, exactly like `drive.file`: they
+ * identify the signed-in account and grant access to nothing. The OAuth
+ * verification threshold is unchanged and the consent screen stays friendly.
+ *
+ * CONSEQUENCE: widening the scope invalidates the existing grant, so the consent
+ * screen appears once more on the next sign-in. Nothing else is lost — the
+ * per-file `drive.file` authorisations survive, because `signOut` deliberately
+ * does not revoke.
  */
-export const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
+export const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/drive.file openid email'
 
 const GSI_SRC = 'https://accounts.google.com/gsi/client'
 

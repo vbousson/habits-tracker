@@ -1,6 +1,6 @@
 <div align="center">
 
-# Habits Tracker
+# MyHabits
 
 **A habit and health tracker that keeps your data in your own Google Sheet — and nowhere else.**
 
@@ -10,6 +10,12 @@
 [![Live demo](https://img.shields.io/badge/demo-live-2f9e63)](https://vbousson.github.io/habits-tracker/)
 
 </div>
+
+> **The product is called MyHabits; the repository is still named
+> `habits-tracker`.** Renaming the repository is optional and cheap — GitHub
+> redirects the old URL, the deploy workflow derives its base path from the
+> repository name, and the OAuth authorised origin is a scheme and host with no
+> path, so nothing in Google Cloud would need touching.
 
 > **The interface is in French.** The code, the comments and this documentation
 > are in English; the app itself speaks to a French-speaking audience. If you

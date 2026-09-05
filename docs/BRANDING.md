@@ -343,17 +343,22 @@ accepted, because every use of those two carries its own words.
 
 ## 2. The name
 
-**Not decided here.** The name is the owner's call, so nothing in the code was
-renamed: `package.json`, the repository, the localStorage keys and every code
-identifier still say `habits-tracker`.
+**Resolved after this study was written: the product is called `MyHabits`.**
 
-What *was* fixed is the concrete bug: the `<title>` was
-`Habits Tracker — suivi d'habitudes et de santé` (45 characters, truncated in
-every browser tab and in search results). It is now `Habits Tracker`
-(14 characters). That is a deliberate placeholder rather than a proposal: it is
-the project's existing name, so it commits to nothing and stays consistent with
-`package.json` and the README until a real name lands. `short_name` stays
-`Habits`, which is already a good home-screen label at six characters.
+The shortlist below is kept as the record of what was considered and what was
+ruled out, because the checks are worth having if the name is ever revisited.
+`Jalon` was the recommendation here; the owner chose an explicit, neutral name
+instead, which is a defensible different objective — a descriptive name asks
+nothing of the reader, where an evocative one has to be taught.
+
+The concrete bug this study set out to fix is fixed: the `<title>` was
+`Habits Tracker — suivi d'habitudes et de santé`, 45 characters and truncated in
+every browser tab and search result. It is now `MyHabits`, 8 characters.
+`short_name` stays `Habits`, already a good home-screen label at six.
+
+The rename was applied to presentation fields only. The four storage keys in
+§2.4 were deliberately left as `habits-tracker`, as recommended there, and so
+was the repository slug.
 
 ### 2.1 Selection criteria
 

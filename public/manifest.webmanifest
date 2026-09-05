@@ -1,5 +1,5 @@
 {
-  "name": "Habits Tracker",
+  "name": "MyHabits",
   "short_name": "Habits",
   "description": "Le suivi d'habitudes et de santé qui tient dans votre propre Google Sheet. Pas de serveur, pas de compte, pas de télémétrie.",
   "id": "./",

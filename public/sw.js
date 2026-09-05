@@ -1,6 +1,6 @@
 /* global URL, clients */
 /**
- * Service worker for habits-tracker.
+ * Service worker for MyHabits.
  *
  * Hand-written on purpose: the app has exactly one HTML entry point and a
  * handful of hashed assets, so Workbox and its build plugin would be more
@@ -20,7 +20,7 @@
  */
 
 const CACHE_VERSION = 1
-const CACHE_NAME = `habits-tracker-v${CACHE_VERSION}`
+const CACHE_NAME = `myhabits-v${CACHE_VERSION}`
 
 /** Where the app is mounted: "/" locally, "/habits-tracker/" on GitHub Pages. */
 const BASE = new URL('./', self.registration.scope).pathname
@@ -132,4 +132,67 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(networkFirst(request))
+})
+
+/* ---------------------------------------------------------------------------
+ * Push reminders
+ *
+ * Added after the caching strategy above, and independent of it: nothing here
+ * touches the cache, the fetch handler or BYPASS_HOSTS.
+ *
+ * The payload is composed and encrypted by the reminder service (see
+ * `server/decide.js`) and decrypted by the browser before it reaches us, so
+ * `event.data.json()` is the message itself. A push that shows no notification
+ * is the one outcome to avoid — Chrome punishes silent pushes and the user just
+ * sees nothing — so an absent or unparseable payload still shows something true.
+ * ------------------------------------------------------------------------- */
+
+const FALLBACK_NOTIFICATION = {
+  title: 'MyHabits',
+  body: 'Il reste une journée à remplir.',
+}
+
+self.addEventListener('push', (event) => {
+  let payload = FALLBACK_NOTIFICATION
+  try {
+    const parsed = event.data ? event.data.json() : null
+    if (parsed && typeof parsed === 'object') {
+      payload = {
+        title: parsed.title || FALLBACK_NOTIFICATION.title,
+        body: parsed.body || FALLBACK_NOTIFICATION.body,
+        slot: parsed.slot,
+      }
+    }
+  } catch {
+    // Not JSON, or no payload at all. The fallback above is still worth showing.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      // One tag per slot: a morning reminder replaces the previous morning
+      // reminder instead of stacking, and the evening one stays put overnight.
+      tag: `myhabits-${payload.slot || 'reminder'}`,
+      renotify: true,
+      icon: `${BASE}icons/icon-192.png`,
+      badge: `${BASE}icons/icon-192.png`,
+      data: { url: BASE },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || BASE, self.location.origin).href
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      // Focusing the tab the user already has open beats opening a second one
+      // with a half-filled form in it.
+      for (const client of windows) {
+        if (client.url.startsWith(target) && 'focus' in client) return client.focus()
+      }
+      return clients.openWindow(target)
+    }),
+  )
 })

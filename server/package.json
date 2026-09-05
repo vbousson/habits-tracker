@@ -1,0 +1,16 @@
+{
+  "name": "myhabits-reminders",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Conditional reminder push service for MyHabits. Runs on Cloud Run, invoked by Cloud Scheduler. Deliberately kept out of the app's package.json.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

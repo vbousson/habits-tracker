@@ -19,12 +19,21 @@ export interface Settings {
   /**
    * Reminder times as `HH:MM` local, or `''` to disable one.
    *
-   * These do not schedule anything by themselves — a static site has no server
-   * and the web platform cannot schedule a notification without one. They feed
-   * the calendar file offered in Settings; see `docs/adr/0002-reminders.md`.
+   * They feed two things: the calendar file offered in Settings, and — when
+   * `pushEnabled` — the reminder service, which stores them alongside the
+   * device's time zone. See `docs/adr/0002-reminders.md`.
    */
   reminderEvening: string
   reminderMorning: string
+  /**
+   * Whether this device has opted into push reminders.
+   *
+   * The browser's subscription is the real truth (`getPushState` reads it), but
+   * that read is asynchronous and goes through the service worker. This flag is
+   * the synchronous answer to "should we bother posting freshness updates?",
+   * asked on every snapshot change.
+   */
+  pushEnabled: boolean
 }
 
 const KEY = 'habits-tracker:settings'
@@ -40,6 +49,7 @@ export function defaultSettings(): Settings {
     demoSeeded: false,
     reminderEvening: '21:30',
     reminderMorning: '07:20',
+    pushEnabled: false,
   }
 }
 

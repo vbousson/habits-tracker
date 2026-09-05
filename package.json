@@ -1,5 +1,5 @@
 {
-  "name": "habits-tracker",
+  "name": "myhabits",
   "version": "0.1.0",
   "private": false,
   "description": "A generic, config-driven habit & health tracker PWA that stores its data in your own Google Sheet.",

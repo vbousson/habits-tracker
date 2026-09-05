@@ -1,4 +1,4 @@
-# Connecter Habits Tracker à ton Google Drive
+# Connecter MyHabits à ton Google Drive
 
 Ce guide te fait créer, en une quinzaine de minutes et une seule fois, l’**identifiant client OAuth**
 dont l’application a besoin pour écrire dans *ta* feuille de calcul.
@@ -59,7 +59,7 @@ Il en faut deux : l’API Sheets pour lire et écrire les cellules, l’API Driv
 
 ## 3. Configurer l’écran de consentement
 
-C’est la page que Google t’affichera au moment de la connexion (« Habits Tracker souhaite accéder
+C’est la page que Google t’affichera au moment de la connexion (« MyHabits souhaite accéder
 à… »).
 
 1. Menu ☰ → **API et services** → **Écran de consentement OAuth**
@@ -67,7 +67,7 @@ C’est la page que Google t’affichera au moment de la connexion (« Habits Tr
 2. **Type d’utilisateur** : choisis **Externe**, puis **Créer**.
    *(« Interne » n’existe que pour les comptes Google Workspace d’entreprise.)*
 3. Remplis les champs obligatoires :
-   - **Nom de l’application** : `Habits Tracker` — c’est ce que tu verras sur l’écran de connexion ;
+   - **Nom de l’application** : `MyHabits` — c’est ce que tu verras sur l’écran de connexion ;
    - **Adresse e-mail d’assistance utilisateur** : ta propre adresse ;
    - **Coordonnées du développeur** (tout en bas) : ta propre adresse.
    Laisse le reste vide (logo, domaine, liens) : rien n’est obligatoire pour un usage personnel.
@@ -91,7 +91,7 @@ Ton application reste en état **Testing** (Test), et **c’est le bon choix pou
 - ✅ Elle est utilisable par les comptes listés comme utilisateurs test (jusqu’à 100).
 - ⚠️ Un compte **non listé** reçoit une erreur `403 access_denied` au moment de la connexion.
 - ⚠️ Google affiche un écran d’avertissement « Google n’a pas validé cette application ».
-  Clique sur **Paramètres avancés** → **Accéder à Habits Tracker (non sécurisé)**. C’est attendu :
+  Clique sur **Paramètres avancés** → **Accéder à MyHabits (non sécurisé)**. C’est attendu :
   l’« application » non vérifiée, c’est la tienne.
 - ⚠️ Historiquement, les jetons d’un projet en mode Test expiraient au bout de 7 jours. Comme cette
   application demande de toute façon un nouveau jeton à chaque session, cela ne change rien pour toi.
@@ -109,7 +109,7 @@ un usage personnel. Reste en mode Test.
 2. Clique sur **+ Créer des identifiants** → **ID client OAuth**.
 3. **Type d’application** : **Application Web**. *(Ne choisis surtout pas « Application de bureau »
    ni « Android/iOS » : le flux du navigateur ne fonctionnerait pas.)*
-4. **Nom** : `Habits Tracker (web)`.
+4. **Nom** : `MyHabits (web)`.
 5. **Origines JavaScript autorisées** — **c’est l’étape que tout le monde rate.**
    Clique sur **+ Ajouter un URI** et saisis, une entrée par ligne :
 
@@ -144,7 +144,7 @@ Deux possibilités, au choix.
 
 ### a. Le coller dans l’application (le plus simple)
 
-Ouvre Habits Tracker → **Réglages** → *Stockage des données* : **Google Sheets** →
+Ouvre MyHabits → **Réglages** → *Stockage des données* : **Google Sheets** →
 *Connexion Google* → colle l’identifiant dans **Identifiant client OAuth** → **Enregistrer** →
 **Se connecter**.
 
@@ -186,7 +186,7 @@ Pour GitHub Pages, ajoute-le comme secret de dépôt
 | `idpiframe_initialization_failed` | Vestige de l’ancienne bibliothèque `gapi.auth2`, ou cookies tiers bloqués. | Cette application utilise Google Identity Services et non `gapi`. Vérifie qu’aucune extension ne bloque `accounts.google.com`, et essaie en navigation normale (pas privée). |
 | « La fenêtre Google n’a pas pu s’ouvrir » | Le navigateur a bloqué la pop-up. | Autorise les pop-ups pour ce site, puis relance depuis **Réglages → Se connecter**. La connexion doit toujours partir d’un clic. |
 | `403 access_denied` juste après avoir choisi ton compte | Ton compte n’est pas **utilisateur test** du projet. | Étape 3.6 : ajoute l’adresse exacte du compte utilisé, puis réessaie. |
-| Écran « Google n’a pas validé cette application » | Mode Test, comportement normal. | **Paramètres avancés** → **Accéder à Habits Tracker (non sécurisé)**. |
+| Écran « Google n’a pas validé cette application » | Mode Test, comportement normal. | **Paramètres avancés** → **Accéder à MyHabits (non sécurisé)**. |
 | `403` mentionnant que l’API n’est pas activée | L’API Sheets ou Drive n’est pas activée sur le projet. | Étape 2, et vérifie que le bon projet est sélectionné en haut de la console. |
 | **`404` après avoir collé un identifiant de feuille** | L’application n’a le droit de voir que **les fichiers qu’elle a créés** (`drive.file`). Une feuille créée à la main dans Drive lui est invisible — Google répond 404 même si le fichier t’appartient. | Utilise **Réglages → Créer ma feuille de calcul**. Pour récupérer d’anciennes données, copie-colle les lignes depuis ton ancienne feuille vers la nouvelle, onglet par onglet. |
 | « Session Google expirée » au bout d’un moment | Les jetons durent environ une heure. Le renouvellement silencieux échoue si tu t’es déconnecté de Google ou si les cookies tiers sont bloqués. | Clique sur **Se connecter** dans Réglages. |
@@ -198,5 +198,5 @@ Pour GitHub Pages, ajoute-le comme secret de dépôt
 
 Le bouton **Se déconnecter** de l’application oublie simplement le jeton sur cet appareil.
 Pour retirer complètement l’autorisation donnée à l’application, va sur
-<https://myaccount.google.com/permissions> et supprime *Habits Tracker*.
+<https://myaccount.google.com/permissions> et supprime *MyHabits*.
 Ta feuille de calcul, elle, reste dans ton Drive : elle t’appartient.

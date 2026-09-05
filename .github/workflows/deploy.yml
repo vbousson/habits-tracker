@@ -49,6 +49,11 @@ jobs:
           # app asks for a client id in its Settings screen instead — the demo
           # (local backend) works without Google at all.
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          # Also optional, and independent of each other only in appearance: the
+          # push client needs both, and disables itself cleanly if either is
+          # missing rather than failing the build.
+          VITE_PUSH_API_URL: ${{ secrets.VITE_PUSH_API_URL }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
         run: npm run build
 
       - name: Add SPA fallback

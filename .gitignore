@@ -12,3 +12,17 @@ coverage/
 .claude/settings.local.json
 
 __pycache__/
+
+# Personal configuration — never committed.
+perso/
+
+# Terraform. State holds resource attributes in the clear and tfvars holds a real
+# email and client id; the provider cache is 100+ MB of downloaded binaries.
+# .terraform.lock.hcl is NOT ignored on purpose — it pins the provider hashes.
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

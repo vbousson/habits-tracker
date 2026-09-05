@@ -90,7 +90,7 @@ export function buildReminderCalendar(
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//habits-tracker//reminders//FR',
+    'PRODID:-//MyHabits//reminders//FR',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
   ]
@@ -101,7 +101,7 @@ export function buildReminderCalendar(
     const hhmm = `${pad(Math.floor(minutes / 60))}${pad(minutes % 60)}`
     lines.push(
       'BEGIN:VEVENT',
-      `UID:habits-tracker-${index}-${hhmm}@local`,
+      `UID:myhabits-${index}-${hhmm}@local`,
       `DTSTAMP:${stamp(now)}`,
       `DTSTART;TZID=${timeZone}:${start}T${hhmm}00`,
       'DURATION:PT10M',

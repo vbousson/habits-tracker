@@ -889,3 +889,123 @@ than via a summary page):
 7. WebKit's standards position on *Periodic* Background Sync specifically (only
    the general Background Sync issue was found). BCD's `false` is the load-bearing
    fact.
+
+---
+
+# Amendment (2026-09) — the client tells the server the minimum it needs
+
+- **Status:** accepted, amends §5, §5.2, §5.5 and §8 above
+- **Date:** 2026-09-06
+- **Scope:** this deployment only. Read §A.5 before reusing any of it.
+
+Everything above stands as analysis. **One decision in it is reversed:** the push
+is no longer content-free, and the server, not the service worker, decides
+whether a reminder is warranted.
+
+## A.1 What changed in the constraints
+
+Two things, neither of them technical.
+
+1. **The project is no longer open source, and there is exactly one user.** The
+   ADR above was written for a shape that no longer exists: a maintainer
+   distributing software to strangers. Driver **D1** — *"the maintainer must not
+   learn anything about the user's data"* — was a promise made to those
+   strangers.
+2. **The server operator and the data subject are the same person.** The owner
+   runs the GCP project. There is no third party. "The maintainer must never
+   learn whether the user filled his day" reduces, here, to "he must not learn
+   what he already knows", which is not a privacy property — it is a tautology
+   with infrastructure attached.
+
+**What did not change, and is the reason this amendment exists at all:**
+Chrome's silent-push budget (§5.5). A push that shows no notification is
+tolerated only so often, and the number is undocumented. The table in §5.5 puts
+the morning channel at **~310 silent pushes a year** at ~85 % adherence. That is
+not a privacy argument, it is an operational one: the design in §5 asks the
+platform for something the platform has publicly said it will not give
+(*"blanket silent push will not be implemented in Chrome"*), and the failure mode
+is silent — the reminders simply stop arriving, months later, for no visible
+reason.
+
+§5.5 listed exactly this as **variant 3**, and rejected it. This amendment takes
+variant 3, because the reason for rejecting it — D1 — no longer applies.
+
+## A.2 Exactly what the server now learns
+
+The app POSTs to `/state`, on load and after a day is saved:
+
+| Field | Example | What it reveals |
+| --- | --- | --- |
+| `subscription` | opaque endpoint + two keys | Unchanged from §5.2: which browser vendor, a pseudonymous device id. |
+| `times` | `{ evening: "21:30", morning: "07:20" }` | Unchanged from §5.2. |
+| `tz` | `Europe/Paris` | Unchanged from §5.2, option (a). |
+| **`lastFilled`** | `2026-09-04` | **New.** One date: the most recent day not owed an answer. |
+| **`pendingDays`** | `3` | **New.** One small integer: unfilled days strictly before today. |
+
+That is the whole delta: **one date and one integer.** No metric name, no metric
+id, no value, no answer, no note, no tag, no count of *what* is missing on a
+given day — only *that* a day is owed. The server cannot distinguish "did not
+sleep well" from "did not cycle to work" from "did not open the app at all",
+because it is never told what a day contains.
+
+It also stores, per slot, the date of the last push it sent (`sent`), which is
+the de-duplication guard and is derived from the above.
+
+**What it buys: zero silent pushes.** The server sends a push only when one is
+warranted, so every push shows a notification. The budget question disappears
+rather than being bet on. The payload — still end-to-end encrypted to the
+device's `p256dh` key under RFC 8291, so the push service cannot read it — can
+now carry the real message, which also means the service worker no longer needs
+to reconstruct it from a local mirror of the data. The IndexedDB reminder record
+proposed in §5.1 is **not needed for this design**; it remains a good idea for
+the offline catch-up banner, on its own merits.
+
+## A.3 Why that is an acceptable trade *for this deployment*
+
+- **The observer is the observed.** The only party who can read `state.json` is
+  the owner of the GCP project, who is the owner of the phone, who is the person
+  the dates are about. He can also just open the spreadsheet.
+- **The leak is bounded and stated.** Two derived numbers, versus the naive
+  design's timestamped daily record of adherence with content. The gap between
+  the two is still the point; this amendment moves along that axis, it does not
+  abandon it.
+- **The alternative is worse in practice.** A feature that quietly stops working
+  after N months, for reasons nobody can measure, is not a more private feature.
+  It is a broken one that also happens not to leak.
+- **`drive.file` is untouched.** The server still has no way to read the
+  spreadsheet, no refresh token, and no long-lived credential of any kind. ADR
+  0001 §3.5 and driver **D2** survive intact — which matters more than D1 did,
+  because D2 is about what an attacker who owns the server could reach, not about
+  what the operator chooses to look at.
+
+## A.4 What this costs in code, honestly
+
+The server grows from "POST an empty body to a list of endpoints" to a service
+with three routes, two authentication paths and a state document. That is the
+real price of this amendment: roughly 250 lines of server code, an OAuth
+audience check that must not be forgotten, and a CORS policy. It is written and
+tested (`server/decide.js` is pure and `tests/push.test.ts` covers it), but it is
+not free, and §6.2's closing paragraph — *"the euros are not the cost"* — applies
+with more force than before.
+
+## A.5 Re-opening the project would require revisiting this
+
+**This amendment is conditional on there being one user who owns the server.**
+
+If the project is ever re-opened, or a hosted instance is offered to anyone else,
+the trade collapses: the operator would then hold, for each stranger, a daily
+record of whether they filled in a health journal and how far behind they are.
+That is precisely the thing §2 refuses, and §5's content-free tick exists to make
+impossible. It would also re-arm every argument in ADR 0001 §privacy, whose claim
+is topological — *"the maintainer has no machine in the path"* — and which this
+service, for a second user, would falsify.
+
+Concretely, before adding a second user:
+
+1. Revert to the content-free tick (§5) and the IndexedDB record (§5.1), or
+2. Accept the silent-push budget risk and measure it, or
+3. Write a new ADR that explicitly revokes the privacy property, as §8 point 1
+   already requires — and say so on the site, not only in a file called `docs/`.
+
+Do not let a second account appear on a service designed under the assumption
+that the operator and the subject are the same person.

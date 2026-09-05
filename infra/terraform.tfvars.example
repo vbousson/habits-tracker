@@ -1,0 +1,26 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored: it holds
+# a real email address and a real client id, and neither belongs in the repo.
+
+project_id = "myhabits-reminders-123456"
+region     = "europe-west1"
+
+# Exact origin of the deployed site, no trailing slash. This is the only origin
+# the API answers CORS for.
+app_origin = "https://vbousson.github.io"
+
+# The one account allowed to write state.
+allowed_email = "you@example.com"
+
+# Same value as VITE_GOOGLE_CLIENT_ID in the site build.
+oauth_client_id = "000000000000-xxxxxxxx.apps.googleusercontent.com"
+
+# Public half of the keypair from `npx web-push generate-vapid-keys` (step 2 of
+# README.md). The private half is added to Secret Manager by hand and must never
+# appear in this file.
+vapid_public_key = "BExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# RFC 8292 contact, so a push service can reach you about a misbehaving sender.
+vapid_subject = "mailto:you@example.com"
+
+# Filled in after step 4 (build & push).
+image = "europe-west1-docker.pkg.dev/myhabits-reminders-123456/myhabits-reminders/service:2026-09-06"

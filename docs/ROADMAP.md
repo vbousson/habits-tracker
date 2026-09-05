@@ -125,6 +125,33 @@ is a hypothesis, and the local backend is what keeps this one tested.
 
 ---
 
+## Reminders
+
+Shipped: conditional evening and morning push, decided by a Cloud Run service
+from two derived facts the app posts (`lastFilled`, `pendingDays`). See
+[ADR 0002](adr/0002-reminders.md) and [PUSH_SETUP.md](PUSH_SETUP.md).
+
+- [ ] **Actionable notifications** — "Yo, tu as fait ton sport ce soir ?" with
+      answer buttons, so a one-metric day can be logged from the notification
+      shade without opening the app.
+
+      The shape is small: `actions: [{ action: 'yes', title: 'Oui' }, …]` on
+      `showNotification`, and a `notificationclick` handler reading
+      `event.action`. The payload already carries a `slot`; it would carry a
+      metric id too.
+
+      **The real obstacle is not the API, it is the token.** The service worker
+      holds no OAuth token and cannot get one — the token flow needs a popup and
+      a user gesture, and ADR 0001 §3.5 keeps it in a JavaScript variable that
+      dies with the tab. So the answer cannot be written to the spreadsheet from
+      the notification. It has to be **queued in IndexedDB by the service worker
+      and flushed by the page on the next open**, which means designing what
+      happens when the queued answer collides with one typed in the meantime.
+
+      Also worth knowing before starting: `actions` is `false` on Safari and
+      Safari iOS (ADR 0002 §4.1), so on iPhone this degrades to the plain
+      notification it already is.
+
 ## Cross-cutting, not tied to a lot
 
 - [ ] Test coverage for the Sheets adapter and for `useTracker`; the domain core
@@ -145,11 +172,18 @@ is a hypothesis, and the local backend is what keeps this one tested.
 
 Saying no is part of a roadmap.
 
-- **A hosted multi-user service.** The privacy claim is true because there is no
-  server. Adding one would trade the project's best property for convenience.
+- **A hosted multi-user service.** There *is* a server now — the reminder
+  scheduler — but it holds two derived numbers and never sees an answer, and the
+  habit data still goes straight from the browser to the user's own Drive.
+  Hosting other people's tracking would change that in kind, not in degree: it
+  would put the operator in a position to observe strangers' habits, and it is
+  the reason ADR 0002's amendment is conditional on this staying a single-user
+  deployment.
 - **Accounts, sharing, social features.** This is a private notebook.
-- **Reminders and push notifications.** They need a server and a push service,
-  and a habit tracker that nags is a habit tracker you delete.
+- ~~**Reminders and push notifications.**~~ Reversed. See
+  [ADR 0002](adr/0002-reminders.md) and its 2026-09 amendment: the reminders are
+  conditional, so the app stays silent on a day already filled — which was the
+  actual objection. A server exists now, and it is scoped to two derived numbers.
 - **A native app.** The PWA installs to the home screen and works offline. An App
   Store presence would cost more than it returns.
 - **Medical claims of any kind.** The app records what you tell it and computes

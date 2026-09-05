@@ -111,7 +111,7 @@ export async function createTrackerSpreadsheet(
 
   onProgress?.('Création du fichier dans ton Google Drive…')
   const created = await createSpreadsheet(token, {
-    properties: { title: title.trim() || 'Habits Tracker' },
+    properties: { title: title.trim() || 'MyHabits' },
     sheets: TAB_ORDER.map((tabTitle, index) => ({
       properties: {
         sheetId: index,
@@ -386,7 +386,7 @@ function metaRows(): string[][] {
  */
 function guideRows(): string[][] {
   return [
-    ['Habits Tracker — mode d’emploi de cette feuille', ''],
+    ['MyHabits — mode d’emploi de cette feuille', ''],
     ['', ''],
     [
       'À quoi sert ce fichier ?',

@@ -37,6 +37,11 @@ that bug reports can name something precise.
 
 ### Changed
 
+- **The product is now called MyHabits.** Presentation only: the four storage
+  keys (`habits-tracker:settings`, `habits-tracker:local`, the literal in
+  `App.tsx`, and the `app` row of the spreadsheet's `Meta` tab) are deliberately
+  left alone, because renaming them would silently discard existing settings and
+  the offline journal for no user-visible benefit.
 - **New palette.** The previous one failed WCAG AA in six places — borders at
   1.35:1, six of seven tag colours below the threshold, the dark-theme "Oui"
   label at 2.38:1. All 46 contrast pairs now pass, and the seven tag colours are
