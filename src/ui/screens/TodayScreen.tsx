@@ -28,7 +28,6 @@ import {
   IconRefresh,
 } from '../components/Icons'
 import { CatchUpBanner } from '../components/CatchUpBanner'
-import { GoalsPanel } from '../components/GoalsPanel'
 import { useFillTimer } from '../../lib/useFillTimer'
 import type { ScreenProps } from './types'
 import '../form.css'
@@ -185,7 +184,15 @@ export function TodayScreen({ tracker }: ScreenProps) {
       {complete && (
         <div className="banner banner--ok">
           <IconCheck size={18} />
-          <span>Journée complète — tout est renseigné.</span>
+          <span className="grow">Journée complète.</span>
+          <button
+            type="button"
+            className="btn btn--sm"
+            // The hash is the router: App listens for `hashchange`.
+            onClick={() => { window.location.hash = '#/dashboard' }}
+          >
+            Voir mes progrès
+          </button>
         </div>
       )}
 
@@ -218,16 +225,6 @@ export function TodayScreen({ tracker }: ScreenProps) {
           </section>
         ))
       )}
-
-      {/* Feedback, so it sits *after* the form: seeing the week's standing is
-          motivating, but it must never delay the two minutes of actual input. */}
-      <GoalsPanel
-        config={config}
-        entries={snapshot.entries}
-        date={date}
-        today={today}
-        variant="compact"
-      />
 
       <DayJournal
         snapshot={snapshot}

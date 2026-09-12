@@ -37,6 +37,14 @@ that bug reports can name something precise.
 
 ### Changed
 
+- **Data entry comes first.** The day screen no longer shows goal progress: it is
+  the screen you open to *record* something, and a panel of verdicts on the way
+  to the form is in the way. Progress is offered where it is actually wanted —
+  once the day is complete, the confirmation carries a "Voir mes progrès" button.
+- **Fewer panels on the dashboard.** The "Résumé" row of headline figures is gone
+  — it restated what the heatmap and the per-metric cards say one screen further
+  down — and goals moved from second position to last. What remains is calendar,
+  trends, per-metric, then goals.
 - **The product is now called MyHabits.** Presentation only: the four storage
   keys (`habits-tracker:settings`, `habits-tracker:local`, the literal in
   `App.tsx`, and the `app` row of the spreadsheet's `Meta` tab) are deliberately

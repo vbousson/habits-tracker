@@ -33,51 +33,8 @@
 
 /* --- Résumé --------------------------------------------------------------- */
 
-.summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.summary__cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding: 11px 13px;
-  background: var(--surface);
-}
-
-.summary__label {
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.summary__value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.summary__sub {
-  font-size: 0.73rem;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 @media (min-width: 620px) {
-  .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
+  }
 
 /* --- Heatmap -------------------------------------------------------------- */
 

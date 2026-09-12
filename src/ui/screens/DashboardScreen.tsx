@@ -8,7 +8,7 @@
  */
 import { useMemo, useState } from 'react'
 import { lastNDays } from '../../core/date'
-import { compareWindows, computeMetricStats, summarizeDays, summarizeRange } from '../../core/stats'
+import { computeMetricStats, summarizeDays } from '../../core/stats'
 import { metricColor, tagColor } from '../../core/colors'
 import { Heatmap } from '../components/Heatmap'
 import { TrendChart } from '../components/TrendChart'
@@ -17,7 +17,7 @@ import { TagFilter } from '../components/TagFilter'
 import { GoalsPanel } from '../components/GoalsPanel'
 import { GoalEditor } from '../components/GoalEditor'
 import { IconRefresh } from '../components/Icons'
-import type { Bucket, MetricStats } from '../../core/stats'
+import type { Bucket } from '../../core/stats'
 import type { Entry, Goal, Note, TrackedEvent, TrackerConfig } from '../../core/types'
 import type { ScreenProps } from './types'
 import '../dashboard.css'
@@ -49,16 +49,6 @@ function bucketNoun(bucket: Bucket): string {
   return 'par mois'
 }
 
-function SummaryCell({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="summary__cell">
-      <span className="summary__label">{label}</span>
-      <span className="summary__value">{value}</span>
-      <span className="summary__sub">{sub}</span>
-    </div>
-  )
-}
-
 export function DashboardScreen({ tracker }: ScreenProps) {
   const [rangeKey, setRangeKey] = useState<RangeKey>('90')
   const [tag, setTag] = useState<string | null>(null)
@@ -82,7 +72,6 @@ export function DashboardScreen({ tracker }: ScreenProps) {
     () => summarizeDays(config, entries, range, activeTag ?? undefined),
     [config, entries, range, activeTag],
   )
-  const overall = useMemo(() => summarizeRange(days), [days])
 
   const scoped = useMemo(
     () =>
@@ -95,27 +84,6 @@ export function DashboardScreen({ tracker }: ScreenProps) {
   const stats = useMemo(
     () => scoped.map((metric) => computeMetricStats(metric, entries, range)),
     [scoped, entries, range],
-  )
-
-  /** The metric currently on the longest run — the one the streak card is about. */
-  const best = useMemo(() => {
-    let winner: MetricStats | null = null
-    for (const candidate of stats) {
-      if (candidate.answered === 0) continue
-      if (
-        winner === null ||
-        candidate.currentStreak > winner.currentStreak ||
-        (candidate.currentStreak === winner.currentStreak && candidate.answered > winner.answered)
-      ) {
-        winner = candidate
-      }
-    }
-    return winner
-  }, [stats])
-
-  const comparison = useMemo(
-    () => (best ? compareWindows(best.metric, entries, range.to, rangeDays) : null),
-    [best, entries, range.to, rangeDays],
   )
 
   /** Only what is worth a full chart; everything else keeps its sparkline. */
@@ -191,57 +159,7 @@ export function DashboardScreen({ tracker }: ScreenProps) {
         </div>
       ) : (
         <>
-          <section className="stack stack--tight">
-            <h2 className="section-title">Résumé</h2>
-            <div className="summary">
-              <SummaryCell
-                label="Jours renseignés"
-                value={String(overall.recorded)}
-                sub={`sur ${overall.total} jours`}
-              />
-              <SummaryCell
-                label="Complétude"
-                value={
-                  overall.completion === null ? '—' : `${Math.round(overall.completion * 100)} %`
-                }
-                sub={`${overall.complete} ${overall.complete > 1 ? 'journées complètes' : 'journée complète'}`}
-              />
-              <SummaryCell
-                label="Série en cours"
-                value={best ? `${best.currentStreak} j` : '—'}
-                sub={best ? best.metric.label : 'aucun indicateur suivi'}
-              />
-              <SummaryCell
-                label="vs. période préc."
-                value={
-                  comparison
-                    ? `${comparison.delta > 0 ? '+' : ''}${Math.round(comparison.delta * 100)} pts`
-                    : '—'
-                }
-                sub={comparison && best ? best.metric.label : 'données insuffisantes'}
-              />
-            </div>
-          </section>
 
-          <section className="stack stack--tight">
-            <div className="row row--between">
-              <h2 className="section-title">Objectifs</h2>
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                onClick={() => setGoalEdit({ goal: null })}
-              >
-                Nouvel objectif
-              </button>
-            </div>
-            <GoalsPanel
-              config={config}
-              entries={entries}
-              tag={tag}
-              variant="full"
-              onEdit={(goal) => setGoalEdit({ goal })}
-            />
-          </section>
 
           <section className="stack stack--tight">
             <h2 className="section-title">Calendrier</h2>
@@ -309,6 +227,25 @@ export function DashboardScreen({ tracker }: ScreenProps) {
                 />
               ))
             )}
+          </section>
+          <section className="stack stack--tight">
+            <div className="row row--between">
+              <h2 className="section-title">Objectifs</h2>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => setGoalEdit({ goal: null })}
+              >
+                Nouvel objectif
+              </button>
+            </div>
+            <GoalsPanel
+              config={config}
+              entries={entries}
+              tag={tag}
+              variant="full"
+              onEdit={(goal) => setGoalEdit({ goal })}
+            />
           </section>
         </>
       )}
